@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Eye } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 
 // Mock data 
@@ -53,12 +53,22 @@ export default function LocationsTable() {
           </tbody>
         </table>
       </div>
-      {/* Pagination */}
-      <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 text-xs text-gray-500 flex justify-between items-center">
-          <span>1-6 of 97</span>
-          <div className="flex gap-1">
-              <button className="px-2 py-1 border rounded bg-white">&lt;</button>
-              <button className="px-2 py-1 border rounded bg-white">&gt;</button>
+      
+      {/* Pagination Footer */}
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
+          <p className="text-sm text-gray-700">
+            Showing <span className="font-medium">1-10</span> of <span className="font-medium">97</span>
+          </p>
+          <div className="flex items-center gap-2">
+                <button className="p-2 border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                </button>
+                 <button className="p-2 border border-gray-300 rounded-lg hover:bg-white text-gray-700 font-medium">
+                    1/10
+                </button>
+                 <button className="p-2 border border-gray-300 rounded-lg hover:bg-white">
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                </button>
           </div>
       </div>
     </div>
