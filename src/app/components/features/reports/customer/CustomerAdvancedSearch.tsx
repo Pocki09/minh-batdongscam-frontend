@@ -8,55 +8,67 @@ interface SearchProps {
   onApply: () => void;
   onReset: () => void;
   selectedLocations?: string[];
-  onRemoveLocation: (location: string) => void; 
+  onRemoveLocation: (location: string) => void;
 }
 
-const RangeInput = ({ label, fromPlaceholder = "3.5", toPlaceholder = "---" }: any) => (
+const RangeInput = ({ label, placeholderFrom = "10", placeholderTo = "---" }: any) => (
     <>
         <div>
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Min {label}</label>
-            <input type="text" placeholder={fromPlaceholder} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 text-sm focus:outline-none focus:border-red-500" />
+            <input type="text" placeholder={placeholderFrom} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 text-sm focus:outline-none focus:border-red-500" />
         </div>
         <div>
             <label className="block text-sm font-bold text-gray-900 mb-1.5">Max {label}</label>
-            <input type="text" placeholder={toPlaceholder} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 text-sm focus:outline-none focus:border-red-500" />
+            <input type="text" placeholder={placeholderTo} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 text-sm focus:outline-none focus:border-red-500" />
         </div>
     </>
 );
 
-export default function CustomersAdvancedSearch({ 
-  onOpenLocationPicker, 
-  onApply, 
-  onReset,
-  selectedLocations = [],
-  onRemoveLocation
+export default function CustomerAdvancedSearch({ 
+  onOpenLocationPicker, onApply, onReset, selectedLocations = [], onRemoveLocation 
 }: SearchProps) {
-  
   return (
     <div className="flex flex-col h-full">
       <div className="space-y-4 flex-1 overflow-y-auto pr-2 pb-4 custom-scrollbar">
           <p className="text-sm text-gray-500">Filter customers by multiple criteria</p>
 
           <div className="grid grid-cols-2 gap-4">
+            
             {/* Customer Tier */}
-            <div className="col-span-2 md:col-span-1">
+            <div className="col-span-1">
                <label className="block text-sm font-bold text-gray-900 mb-1.5">Customer&apos;s tier</label>
-               <div className="relative w-full border border-gray-300 rounded-lg bg-gray-50 px-3 py-2.5 cursor-pointer flex items-center justify-between group hover:border-red-500 transition-colors">
-                  <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-900">Multiple</span>
-                      <span className="bg-gray-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">2</span>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+               <div className="relative">
+                 <select className="w-full appearance-none border border-gray-300 rounded-lg px-3 py-2.5 bg-gray-50 text-sm focus:outline-none focus:border-red-500">
+                    <option>Multiple (2)</option>
+                 </select>
+                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                </div>
             </div>
             
             <div className="hidden md:block"></div>
 
-            {/* Range Inputs... (Giữ nguyên) */}
             <RangeInput label="leading score" />
             <RangeInput label="viewings" />
-            
-            {/* ... Date inputs ... */}
+            <RangeInput label="spending" placeholderFrom="3.5B" />
+            <RangeInput label="contracts" />
+            <RangeInput label="properties bought" />
+            <RangeInput label="properties rented" />
+
+            {/* Dates */}
+            <div>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">Join date from</label>
+                <div className="relative">
+                    <input type="text" placeholder="January 2nd, 2025" className="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-2.5 bg-gray-50 text-sm" />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">Join date to</label>
+                <div className="relative">
+                    <input type="text" placeholder="May 1st, 2025" className="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-2.5 bg-gray-50 text-sm" />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+            </div>
 
             {/* Location Picker */}
             <div className="col-span-2">
@@ -78,9 +90,7 @@ export default function CustomersAdvancedSearch({
                             />
                         </span>
                       ))
-                  ) : (
-                      <span className="text-sm text-gray-400 px-1">Select cities/districts...</span>
-                  )}
+                  ) : <span className="text-sm text-gray-400 px-1">Select cities/districts...</span>}
                   <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
                </div>
             </div>
