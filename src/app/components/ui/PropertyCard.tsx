@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Bed, Bath, Square, Heart } from 'lucide-react';
+import { favoriteService, LikeType } from '@/lib/api/services/favorite.service';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PropertyCardProps {
-  id: number;
+  id: string; // Changed to string for UUID
   title: string;
   image: string;
   price: string;
@@ -16,7 +18,6 @@ interface PropertyCardProps {
   bathrooms?: number;
   area: string;
   isFavorite?: boolean;
-  onToggleFavorite?: (id: number) => void;
   category?: string;
   noBorder?: boolean;
 }
@@ -32,11 +33,64 @@ export default function PropertyCard({
   bedrooms,
   bathrooms,
   area,
-  isFavorite = false,
-  onToggleFavorite,
+  isFavorite: initialIsFavorite = false,
   category,
   noBorder = false,
 }: PropertyCardProps) {
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  const handleToggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation
+    e.stopPropagation();
+
+    if (!user) {
+      // Redirect to login if not authenticated
+      window.location.href = '/login';
+      return;
+    }
+
+    if (isTogglingFavorite) return;
+
+    // Optimistic update
+    const previousState = isFavorite;
+    setIsFavorite(!isFavorite);
+    setIsTogglingFavorite(true);
+
+    try {
+      const result = await favoriteService.toggleLike(id, LikeType.PROPERTY);
+      setIsFavorite(result); // Update with actual server state
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      // Revert on error
+      setIsFavorite(previousState);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
+
+  // Helper to get proper image URL
+  const getImageUrl = (url: string): string => {
+    const fallback = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800';
+    
+    if (!url) return fallback;
+    
+    // Reject PDF files
+    if (url.toLowerCase().includes('.pdf')) {
+      return fallback;
+    }
+    
+    // If already absolute URL, return as is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // If relative path, prepend API base URL
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   return (
     <Link
       href={`/property/${id}`}
@@ -46,7 +100,7 @@ export default function PropertyCard({
     >
       <div className="relative h-48 overflow-hidden">
         <img
-          src={image}
+          src={getImageUrl(image)}
           alt={title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
@@ -59,14 +113,15 @@ export default function PropertyCard({
             </span>
           </div>
         )}
-        {onToggleFavorite && (
-          <button 
-            onClick={(e) => { e.preventDefault(); onToggleFavorite(id); }}
-            className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white"
-          >
-            <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-          </button>
-        )}
+        <button 
+          onClick={handleToggleFavorite}
+          disabled={isTogglingFavorite}
+          className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-all disabled:opacity-50"
+        >
+          <Heart className={`w-4 h-4 transition-all ${
+            isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'
+          }`} />
+        </button>
       </div>
 
       <div className="p-4">

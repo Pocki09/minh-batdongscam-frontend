@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building, MapPin, Eye, Check, X, Calendar, User, DollarSign, Clock, Filter, Search } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import Link from 'next/link';
+import { assignmentService } from '@/lib/api/services/assignment.service';
 
 type AssignmentStatus = 'Pending' | 'Accepted' | 'In Progress' | 'Completed' | 'Rejected';
 
@@ -24,69 +25,7 @@ interface Assignment {
   commission: string;
 }
 
-// Mock data
-const mockAssignments: Assignment[] = [
-  {
-    id: 1,
-    propertyId: 'PROP-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    propertyImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    propertyAddress: 'District 7, Ho Chi Minh City',
-    propertyPrice: '$850,000',
-    propertyType: 'Sale',
-    ownerName: 'Nguyễn Văn Owner',
-    ownerPhone: '0909111111',
-    status: 'Pending',
-    assignedAt: '2024-01-15',
-    deadline: '2024-03-15',
-    commission: '2%',
-  },
-  {
-    id: 2,
-    propertyId: 'PROP-2024-002',
-    propertyName: 'Luxury Apartment Downtown',
-    propertyImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-    propertyAddress: 'District 1, Ho Chi Minh City',
-    propertyPrice: '$1,200/month',
-    propertyType: 'Rent',
-    ownerName: 'Lê Văn Owner',
-    ownerPhone: '0909222222',
-    status: 'In Progress',
-    assignedAt: '2024-01-10',
-    deadline: '2024-02-10',
-    commission: '1 month rent',
-  },
-  {
-    id: 3,
-    propertyId: 'PROP-2024-003',
-    propertyName: 'Family House with Garden',
-    propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-    propertyAddress: 'Thu Duc City, Ho Chi Minh',
-    propertyPrice: '$650,000',
-    propertyType: 'Sale',
-    ownerName: 'Hoàng Thị Owner',
-    ownerPhone: '0909333333',
-    status: 'Accepted',
-    assignedAt: '2024-01-08',
-    deadline: '2024-03-08',
-    commission: '2.5%',
-  },
-  {
-    id: 4,
-    propertyId: 'PROP-2024-004',
-    propertyName: 'Cozy Studio Near Park',
-    propertyImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400',
-    propertyAddress: 'Binh Thanh District',
-    propertyPrice: '$450/month',
-    propertyType: 'Rent',
-    ownerName: 'Phạm Văn Owner',
-    ownerPhone: '0909444444',
-    status: 'Completed',
-    assignedAt: '2023-12-15',
-    deadline: '2024-01-15',
-    commission: '1 month rent',
-  },
-];
+// Removed mock data - using real API
 
 const statusVariants: Record<AssignmentStatus, 'warning' | 'info' | 'success' | 'danger' | 'default'> = {
   Pending: 'warning',
@@ -97,10 +36,43 @@ const statusVariants: Record<AssignmentStatus, 'warning' | 'info' | 'success' | 
 };
 
 export default function AssignmentsPage() {
-  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    loadAssignments();
+  }, []);
+
+  const loadAssignments = async () => {
+    setIsLoading(true);
+    try {
+      const response = await assignmentService.getMyAssignedProperties();
+      // Map API response to component interface - response is paginated
+      const mappedData: Assignment[] = (response.data || []).map((item: any) => ({
+        id: item.id,
+        propertyId: item.propertyId || item.id,
+        propertyName: item.title || 'Untitled Property',
+        propertyImage: item.imageUrl || '',
+        propertyAddress: item.address || '',
+        propertyPrice: item.price ? `$${item.price.toLocaleString()}` : 'N/A',
+        propertyType: item.transactionType === 'SALE' ? 'Sale' : 'Rent',
+        ownerName: item.ownerName || 'Unknown',
+        ownerPhone: item.ownerPhone || '',
+        status: 'In Progress', // Default status since API doesn't provide assignment status
+        assignedAt: item.assignedAt || new Date().toISOString().split('T')[0],
+        deadline: item.deadline || '',
+        commission: item.commissionRate ? `${item.commissionRate}%` : 'N/A'
+      }));
+      setAssignments(mappedData);
+    } catch (error) {
+      console.error('Failed to load assignments:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredAssignments = assignments.filter(a => {
     const matchesSearch = a.propertyName.toLowerCase().includes(searchTerm.toLowerCase()) ||

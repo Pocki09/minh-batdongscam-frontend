@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Calendar, DollarSign, Eye, Printer, PenLine, X, Download, ChevronLeft, ChevronRight, Star, AlertCircle, Check } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import StarRating from '@/app/components/ui/StarRating';
+import { contractService, Contract as ApiContract } from '@/lib/api/services/contract.service';
+import { paymentService } from '@/lib/api/services/payment.service';
+import Skeleton from '@/app/components/ui/Skeleton';
 
-type ContractStatus = 'Draft' | 'Pending' | 'Active' | 'Completed' | 'Cancelled' | 'Expired';
-type ContractType = 'Sale' | 'Rental';
+type ContractStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
+type ContractType = 'SALE' | 'RENT';
 
 interface Contract {
-  id: number;
+  id: string;
   contractNumber: string;
   propertyName: string;
   propertyImage: string;
@@ -18,7 +21,7 @@ interface Contract {
   contractType: ContractType;
   status: ContractStatus;
   startDate: string;
-  endDate: string;
+  endDate: string | undefined;
   totalValue: string;
   paidAmount: string;
   remainingAmount: string;
@@ -28,75 +31,18 @@ interface Contract {
   rating: number | null;
 }
 
-// Mock data
-const mockContracts: Contract[] = [
-  {
-    id: 1,
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    propertyImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    propertyAddress: 'District 7, Ho Chi Minh City',
-    contractType: 'Sale' as const,
-    status: 'Active' as const,
-    startDate: '2024-01-15',
-    endDate: '2024-12-31',
-    totalValue: '$850,000',
-    paidAmount: '$255,000',
-    remainingAmount: '$595,000',
-    owner: { name: 'Nguyễn Văn Owner', phone: '0909111111' },
-    agent: { name: 'Trần Văn Agent', phone: '0909222222' },
-    terms: 'Monthly installment payment over 12 months',
-    rating: null,
-  },
-  {
-    id: 2,
-    contractNumber: 'CTR-2024-002',
-    propertyName: 'Luxury Apartment Downtown',
-    propertyImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-    propertyAddress: 'District 1, Ho Chi Minh City',
-    contractType: 'Rental' as const,
-    status: 'Pending' as const,
-    startDate: '2024-02-01',
-    endDate: '2025-01-31',
-    totalValue: '$14,400/year',
-    paidAmount: '$0',
-    remainingAmount: '$14,400',
-    owner: { name: 'Lê Văn Owner', phone: '0909333333' },
-    agent: { name: 'Phạm Thị Agent', phone: '0909444444' },
-    terms: 'Monthly rent payment',
-    rating: null,
-  },
-  {
-    id: 3,
-    contractNumber: 'CTR-2023-015',
-    propertyName: 'Cozy Studio Near Park',
-    propertyImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400',
-    propertyAddress: 'Binh Thanh District',
-    contractType: 'Rental' as const,
-    status: 'Completed' as const,
-    startDate: '2023-01-01',
-    endDate: '2023-12-31',
-    totalValue: '$5,400/year',
-    paidAmount: '$5,400',
-    remainingAmount: '$0',
-    owner: { name: 'Hoàng Văn Owner', phone: '0909555555' },
-    agent: { name: 'Vũ Văn Agent', phone: '0909666666' },
-    terms: 'Monthly rent payment',
-    rating: 5,
-  },
-];
-
 const statusVariants: Record<ContractStatus, 'default' | 'warning' | 'info' | 'success' | 'danger'> = {
-  Draft: 'default',
-  Pending: 'warning',
-  Active: 'info',
-  Completed: 'success',
-  Cancelled: 'danger',
-  Expired: 'default',
+  DRAFT: 'default',
+  PENDING: 'warning',
+  ACTIVE: 'info',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
+  EXPIRED: 'default',
 };
 
 export default function ContractsPage() {
-  const [contracts, setContracts] = useState<Contract[]>(mockContracts);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showSignModal, setShowSignModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -104,9 +50,43 @@ export default function ContractsPage() {
   const [newRating, setNewRating] = useState(0);
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
 
+  useEffect(() => {
+    loadContracts();
+  }, []);
+
+  const loadContracts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await contractService.getMyContracts();
+      const mappedData: Contract[] = data.map(c => ({
+        id: c.id,
+        contractNumber: c.id,
+        propertyName: c.propertyTitle,
+        propertyImage: '',
+        propertyAddress: c.propertyAddress,
+        contractType: c.contractType,
+        status: c.status,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        totalValue: c.price ? `$${c.price.toLocaleString()}` : '$0',
+        paidAmount: '$0',
+        remainingAmount: c.price ? `$${c.price.toLocaleString()}` : '$0',
+        owner: { name: '', phone: '' },
+        agent: { name: c.agentName || 'TBA', phone: '' },
+        terms: '',
+        rating: null
+      }));
+      setContracts(mappedData);
+    } catch (error) {
+      console.error('Failed to load contracts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredContracts = contracts.filter(c => {
-    if (filter === 'active') return c.status === 'Active' || c.status === 'Pending';
-    if (filter === 'completed') return c.status === 'Completed' || c.status === 'Cancelled';
+    if (filter === 'active') return c.status === 'ACTIVE' || c.status === 'PENDING';
+    if (filter === 'completed') return c.status === 'COMPLETED' || c.status === 'CANCELLED';
     return true;
   });
 
@@ -115,13 +95,17 @@ export default function ContractsPage() {
     setShowSignModal(true);
   };
 
-  const confirmSign = () => {
+  const confirmSign = async () => {
     if (selectedContract) {
-      setContracts(contracts.map(c => 
-        c.id === selectedContract.id ? { ...c, status: 'Active' as ContractStatus } : c
-      ));
-      setShowSignModal(false);
-      setSelectedContract(null);
+      try {
+        await contractService.signContract(selectedContract.id);
+        await loadContracts();
+        setShowSignModal(false);
+        setSelectedContract(null);
+      } catch (error) {
+        console.error('Failed to sign contract:', error);
+        alert('Failed to sign contract');
+      }
     }
   };
 
@@ -131,14 +115,40 @@ export default function ContractsPage() {
     setShowRatingModal(true);
   };
 
-  const submitRating = () => {
-    if (ratingContract) {
-      setContracts(contracts.map(c => 
-        c.id === ratingContract.id ? { ...c, rating: newRating } : c
-      ));
-      setShowRatingModal(false);
+  const submitRating = async () => {
+    if (ratingContract && newRating > 0) {
+      try {
+        await contractService.rateContract(ratingContract.id, {
+          rating: newRating,
+          comment: ''
+        });
+        await loadContracts();
+        setShowRatingModal(false);
+      } catch (error) {
+        console.error('Failed to rate contract:', error);
+        alert('Failed to submit rating');
+      }
     }
   };
+
+  const handlePayContract = async (contractId: string) => {
+    try {
+      const checkout = await paymentService.createContractCheckout(contractId);
+      window.location.href = checkout.checkoutUrl;
+    } catch (error) {
+      console.error('Failed to create payment:', error);
+      alert('Failed to initiate payment');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton height={60} />
+        <Skeleton height={400} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -211,7 +221,7 @@ export default function ContractsPage() {
                     <p className="text-sm text-gray-500 mt-1">{contract.propertyAddress}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <Badge variant={contract.contractType === 'Sale' ? 'sale' : 'rental'}>
+                    <Badge variant={contract.contractType === 'SALE' ? 'sale' : 'rental'}>
                       {contract.contractType}
                     </Badge>
                     <Badge variant={statusVariants[contract.status]}>
@@ -228,7 +238,7 @@ export default function ContractsPage() {
                       <Calendar className="w-3 h-3 text-gray-400" />
                       {contract.startDate}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">to {contract.endDate}</p>
+                    {contract.endDate && <p className="text-xs text-gray-500 mt-0.5">to {contract.endDate}</p>}
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Total Value</p>
@@ -245,7 +255,7 @@ export default function ContractsPage() {
                 </div>
 
                 {/* Rating */}
-                {contract.status === 'Completed' && contract.rating && (
+                {contract.status === 'COMPLETED' && contract.rating && (
                   <div className="flex items-center gap-2 mt-3">
                     <span className="text-xs text-gray-500">Your Rating:</span>
                     <StarRating rating={contract.rating} size="sm" />
@@ -269,7 +279,7 @@ export default function ContractsPage() {
                     <Download className="w-4 h-4" />
                     Download PDF
                   </button>
-                  {contract.status === 'Pending' && (
+                  {contract.status === 'PENDING' && (
                     <button
                       onClick={() => handleSign(contract)}
                       className="flex items-center gap-1 px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
@@ -278,7 +288,7 @@ export default function ContractsPage() {
                       Sign Contract
                     </button>
                   )}
-                  {contract.status === 'Completed' && !contract.rating && (
+                  {contract.status === 'COMPLETED' && !contract.rating && (
                     <button
                       onClick={() => handleRate(contract)}
                       className="flex items-center gap-1 px-4 py-2 text-xs font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-lg transition-colors"
@@ -287,7 +297,7 @@ export default function ContractsPage() {
                       Rate
                     </button>
                   )}
-                  {(contract.status === 'Active' || contract.status === 'Pending') && (
+                  {(contract.status === 'ACTIVE' || contract.status === 'PENDING') && (
                     <button className="flex items-center gap-1 px-4 py-2 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
                       <X className="w-4 h-4" />
                       Request Cancel
@@ -329,7 +339,7 @@ export default function ContractsPage() {
                 <h4 className="font-bold text-gray-900">{selectedContract.propertyName}</h4>
                 <p className="text-sm text-gray-500 mt-1">{selectedContract.propertyAddress}</p>
                 <div className="flex gap-2 mt-2">
-                  <Badge variant={selectedContract.contractType === 'Sale' ? 'sale' : 'rental'}>
+                  <Badge variant={selectedContract.contractType === 'SALE' ? 'sale' : 'rental'}>
                     {selectedContract.contractType}
                   </Badge>
                   <Badge variant={statusVariants[selectedContract.status]}>
@@ -347,7 +357,7 @@ export default function ContractsPage() {
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500">End Date</p>
-                <p className="font-medium text-gray-900">{selectedContract.endDate}</p>
+                <p className="font-medium text-gray-900">{selectedContract.endDate || 'N/A'}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500">Total Value</p>

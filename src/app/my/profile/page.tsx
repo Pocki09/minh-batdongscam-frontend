@@ -1,48 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Mail, Phone, Calendar, MapPin, Eye, EyeOff, Edit2, Building, DollarSign, Zap } from 'lucide-react';
-
-// Mock user data matching the design
-const mockUser = {
-  firstName: 'Minh',
-  lastName: 'Phan Đình',
-  email: 'phandinhminh48@gmail.com',
-  phone: '0865 8***',
-  password: '******************',
-  memberSince: 'January 2nd, 2023',
-  address: 'Ward 3, Gò Vấp District, Hồ Chí Minh city',
-  tier: 'PLANTINUM',
-  verified: true,
-  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
-  stats: {
-    totalListings: 24,
-    bought: 8,
-    rented: 8,
-    invested: 8,
-  },
-  propertiesStats: {
-    totalTransactions: 22,
-    bought: 10,
-    rented: 20,
-    renting: 2,
-  },
-  billings: {
-    customerTier: 'PLANTINUM',
-    totalTransactions: 10,
-    totalSpending: 20000.45,
-    currentMonthSpending: 1010.00,
-    totalPurchases: 5,
-    currentMonthPurchases: 2,
-    totalRentals: 5,
-    currentMonthRentals: 2,
-    paymentScheduleThisMonth: 3,
-    nextPaymentSchedule: '8:00 - 27/10/2025',
-    lastPaymentAt: '8:00 - 27/10/2025',
-  },
-};
+import { Mail, Phone, Calendar, MapPin, Eye, EyeOff, Edit2, Building, DollarSign, Camera } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { accountService } from '@/lib/api/services/account.service';
+import Skeleton from '@/app/components/ui/Skeleton';
 
 const tabs = [
   { key: 'properties', label: 'Properties', href: '/customer/properties' },
@@ -56,16 +20,82 @@ const tabs = [
 
 export default function CustomerProfilePage() {
   const pathname = usePathname();
+  const { user, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
   const [formData, setFormData] = useState({
-    firstName: mockUser.firstName,
-    lastName: mockUser.lastName,
-    phone: mockUser.phone,
-    email: mockUser.email,
-    password: mockUser.password,
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
   });
+
+  // Update formData when user data is loaded
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        phone: user.phoneNumber || '',
+        email: user.email || '',
+      });
+    }
+  }, [user]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setError('');
+    
+    try {
+      const updatedUser = await accountService.updateAvatar(file);
+      setUser({ ...updatedUser, role: updatedUser.role as any });
+      setSuccess('Avatar updated successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setError('');
+    try {
+      const updatedUser = await accountService.updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phoneNumber: formData.phone,
+      });
+      setUser({ ...updatedUser, role: updatedUser.role as any });
+      setSuccess('Profile updated successfully!');
+      setIsEditing(false);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update profile');
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <Skeleton height={200} />
+        <Skeleton height={400} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-0">
@@ -78,43 +108,41 @@ export default function CustomerProfilePage() {
             <div className="relative">
               <div className="w-40 h-40 rounded-full border-4 border-white overflow-hidden">
                 <img
-                  src={mockUser.avatar}
+                  src={user.avatarUrl || '/default-avatar.png'}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
               </div>
               {/* Tier Badge - with proper colors */}
-              <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-1.5 text-white text-sm font-bold rounded-full shadow uppercase ${
-                mockUser.tier === 'PLATINUM' ? 'bg-gradient-to-r from-pink-400 to-pink-600' :
-                mockUser.tier === 'GOLD' ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
-                'bg-gradient-to-r from-orange-600 to-orange-800'
-              }`}>
-                {mockUser.tier}
+              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-1.5 text-white text-sm font-bold rounded-full shadow uppercase bg-gradient-to-r from-orange-600 to-orange-800">
+                {user.tier || 'MEMBER'}
               </div>
             </div>
 
             {/* User Details */}
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-3">
-                <h1 className="text-3xl font-bold text-white">{mockUser.lastName} {mockUser.firstName}</h1>
-                {mockUser.verified && (
-                  <span className="px-3 py-1 bg-green-500 text-white text-sm font-medium rounded">
-                    Verified
-                  </span>
-                )}
+                <h1 className="text-3xl font-bold text-white">{user.lastName} {user.firstName}</h1>
+                <span className="px-3 py-1 bg-green-500 text-white text-sm font-medium rounded">
+                  Verified
+                </span>
               </div>
               <div className="space-y-2 text-white">
                 <p className="flex items-center gap-2">
                   <Mail className="w-5 h-5" />
-                  <span className="text-base">{mockUser.email}</span>
+                  <span className="text-base">{user.email}</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  <span className="text-base">Member since {mockUser.memberSince}</span>
+                  <span className="text-base">Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Invalid Date'}</span>
                 </p>
                 <p className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
-                  <span className="text-base">{mockUser.address}</span>
+                  <span className="text-base">
+                    {user.wardName && user.districtName && user.cityName 
+                      ? `${user.wardName}, ${user.districtName}, ${user.cityName}`
+                      : 'No address provided'}
+                  </span>
                 </p>
               </div>
               <div className="flex gap-3 mt-5">
@@ -122,7 +150,7 @@ export default function CustomerProfilePage() {
                   Contact Zalo
                 </button>
                 <button className="px-6 py-2.5 border-2 border-white text-white text-base font-medium rounded-lg hover:bg-red-700 transition-colors">
-                  Call 0865 8***
+                  Call {user.phoneNumber ? user.phoneNumber.substring(0, 4) + ' ' + user.phoneNumber.substring(4, 8).replace(/./g, '*') : 'N/A'}
                 </button>
               </div>
             </div>
@@ -133,23 +161,23 @@ export default function CustomerProfilePage() {
                 <div className="text-center border-b border-red-600 pb-4">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <Building className="w-6 h-6 text-white" />
-                    <p className="text-4xl font-bold text-white">{mockUser.stats.totalListings}</p>
+                    <p className="text-4xl font-bold text-white">{user.profile?.totalListings || 0}</p>
                   </div>
                   <p className="text-sm text-red-200">Total Listings</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{mockUser.stats.bought}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalBought || 0}</span>
                   <span className="text-red-200 text-base">Bought</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{mockUser.stats.rented}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalRented || 0}</span>
                   <span className="text-red-200 text-base">Rented</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{mockUser.stats.invested}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalInvested || 0}</span>
                   <span className="text-red-200 text-base">Invested</span>
                 </div>
               </div>
@@ -234,7 +262,12 @@ export default function CustomerProfilePage() {
                     className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
                   />
                 ) : (
-                  <p className="text-gray-900 font-medium">{showPhone ? '0865 8123456' : formData.phone}</p>
+                  <p className="text-gray-900 font-medium">
+                    {showPhone 
+                      ? formData.phone 
+                      : formData.phone ? formData.phone.substring(0, 4) + '******' : 'N/A'
+                    }
+                  </p>
                 )}
                 <button
                   onClick={() => setShowPhone(!showPhone)}
@@ -248,45 +281,7 @@ export default function CustomerProfilePage() {
             {/* Email */}
             <div>
               <label className="block text-sm text-gray-500 mb-1">Email</label>
-              {isEditing ? (
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
-                />
-              ) : (
-                <p className="text-gray-900 font-medium">{formData.email}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">Password</label>
-              <div className="flex items-center gap-2">
-                {isEditing ? (
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-gray-400"
-                  />
-                ) : (
-                  <p className="text-gray-900 font-medium">{formData.password}</p>
-                )}
-                <button
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="p-2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Member Since */}
-            <div>
-              <label className="block text-sm text-gray-500 mb-1">Member Since</label>
-              <p className="text-gray-900 font-medium">{mockUser.memberSince}</p>
+              <p className="text-gray-900 font-medium">{formData.email}</p>
             </div>
           </div>
         </div>
@@ -300,19 +295,19 @@ export default function CustomerProfilePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
               <p className="text-sm text-gray-500 mb-1">Total transactions</p>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.propertiesStats.totalTransactions}</p>
+              <p className="text-2xl font-bold text-gray-900">{(user.profile?.totalBought || 0) + (user.profile?.totalRented || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Bought</p>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.propertiesStats.bought}</p>
+              <p className="text-2xl font-bold text-gray-900">{user.profile?.totalBought || 0}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Rented</p>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.propertiesStats.rented}</p>
+              <p className="text-2xl font-bold text-gray-900">{user.profile?.totalRented || 0}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500 mb-1">Renting</p>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.propertiesStats.renting}</p>
+              <p className="text-2xl font-bold text-gray-900">{user.statisticAll?.totalRentals || 0}</p>
             </div>
           </div>
         </div>
@@ -323,72 +318,83 @@ export default function CustomerProfilePage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Billings</h2>
         
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4">
-            {/* Row 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Customer tier */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Customer tier</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.customerTier}</p>
+              <p className="font-bold text-gray-900">{user.tier || 'MEMBER'}</p>
             </div>
+            
+            {/* Total transactions */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Total transactions</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.totalTransactions}</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.monthContractsSigned || 0}</p>
             </div>
-            <div className="md:col-span-2"></div>
 
-            {/* Row 2 */}
+            {/* Total spending */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Total spending</p>
               <div className="flex items-center gap-2">
-                <p className="font-bold text-gray-900">{mockUser.billings.totalSpending.toLocaleString()}</p>
+                <p className="font-bold text-gray-900">${(user.statisticAll?.spending || 0).toLocaleString()}</p>
                 <DollarSign className="w-4 h-4 text-gray-400" />
               </div>
             </div>
+            
+            {/* Current month spending */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Current month spending</p>
               <div className="flex items-center gap-2">
-                <p className="font-bold text-gray-900">{mockUser.billings.currentMonthSpending.toLocaleString()}</p>
+                <p className="font-bold text-gray-900">${(user.statisticMonth?.monthSpending || 0).toLocaleString()}</p>
                 <DollarSign className="w-4 h-4 text-gray-400" />
               </div>
             </div>
-            <div className="md:col-span-2"></div>
 
-            {/* Row 3 */}
+            {/* Total purchases */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Total purchases</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.totalPurchases}</p>
+              <p className="font-bold text-gray-900">{user.statisticAll?.totalPurchases || 0}</p>
             </div>
+            
+            {/* Current month purchases */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Current month purchases</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.currentMonthPurchases}</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.monthPurchases || 0}</p>
             </div>
-            <div className="md:col-span-2"></div>
 
-            {/* Row 4 */}
+            {/* Total rentals */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Total rentals</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.totalRentals}</p>
+              <p className="font-bold text-gray-900">{user.statisticAll?.totalRentals || 0}</p>
             </div>
+            
+            {/* Current month rentals */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Current month rentals</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.currentMonthRentals}</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.monthRentals || 0}</p>
             </div>
-            <div className="md:col-span-2"></div>
 
-            {/* Row 5 */}
+            {/* Viewings Requested */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Payment Schedule this month</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.paymentScheduleThisMonth}</p>
+              <p className="text-sm text-gray-500 mb-1">Viewings Requested</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.monthViewingsRequested || 0}</p>
             </div>
+            
+            {/* Viewings Attended */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Next Payment Schedule at</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.nextPaymentSchedule}</p>
+              <p className="text-sm text-gray-500 mb-1">Viewings Attended</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.monthViewingAttended || 0}</p>
             </div>
-            <div className="md:col-span-2"></div>
 
-            {/* Row 6 */}
+            {/* Lead Score */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Last Payment at</p>
-              <p className="font-bold text-gray-900">{mockUser.billings.lastPaymentAt}</p>
+              <p className="text-sm text-gray-500 mb-1">Lead Score</p>
+              <p className="font-bold text-gray-900">{user.statisticMonth?.leadScore || 0}</p>
+            </div>
+            
+            {/* Ranking Position */}
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Ranking Position</p>
+              <p className="font-bold text-gray-900">#{user.statisticMonth?.leadPosition || 'N/A'}</p>
             </div>
           </div>
         </div>

@@ -1,61 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Building, Search, MapPin, Bed, Bath, Square, Heart, ChevronRight, Star, ArrowRight, Home, Key, Users, Shield, Phone, Mail, ChevronDown, Menu, X } from 'lucide-react';
+import { Building, Search, MapPin, Bed, Bath, Square, Heart, ChevronRight, Star, ArrowRight, Home, Key, Users, Shield, Phone, Mail, ChevronDown, Menu, X, Loader2 } from 'lucide-react';
+import NavBar from '@/app/components/layout/NavBar';
 import Footer from '@/app/components/layout/Footer';
-
-// Mock featured properties
-const featuredProperties = [
-  {
-    id: 1,
-    title: 'Modern Villa with Pool',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800',
-    price: '$850,000',
-    type: 'Sale',
-    location: 'District 7, Ho Chi Minh City',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: '280 m²',
-    isFavorite: false,
-  },
-  {
-    id: 2,
-    title: 'Luxury Apartment Downtown',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800',
-    price: '$1,200/month',
-    type: 'Rent',
-    location: 'District 1, Ho Chi Minh City',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '120 m²',
-    isFavorite: true,
-  },
-  {
-    id: 3,
-    title: 'Family House with Garden',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
-    price: '$650,000',
-    type: 'Sale',
-    location: 'Thu Duc City, Ho Chi Minh',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: '350 m²',
-    isFavorite: false,
-  },
-  {
-    id: 4,
-    title: 'Cozy Studio Near Park',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
-    price: '$450/month',
-    type: 'Rent',
-    location: 'Binh Thanh District',
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '45 m²',
-    isFavorite: false,
-  },
-];
+import { propertyService } from '@/lib/api/services/property.service';
+import { PropertyCard } from '@/lib/api/types';
 
 const locations = [
   { name: 'District 1', count: 245, image: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=400' },
@@ -76,74 +27,65 @@ export default function LandingPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Featured properties from API
+  const [featuredProperties, setFeaturedProperties] = useState<PropertyCard[]>([]);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(true);
+
+  // Fetch featured properties
+  useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const response = await propertyService.getPropertyCards({
+          topK: true,
+          limit: 4,
+          sortType: 'desc',
+          sortBy: 'createdAt',
+        });
+        setFeaturedProperties(response.data);
+      } catch (error) {
+        console.error('Failed to fetch featured properties:', error);
+      } finally {
+        setIsLoadingFeatured(false);
+      }
+    };
+
+    fetchFeatured();
+  }, []);
+
+  const formatPrice = (amount: number, transactionType: 'SALE' | 'RENT' | null) => {
+    if (transactionType === 'RENT') {
+      return `$${amount.toLocaleString()}/month`;
+    }
+    return `$${amount.toLocaleString()}`;
+  };
+
+  // Helper to convert image URLs - only accept absolute URLs
+  const getImageUrl = (url: string | null | undefined): string => {
+    // Fallback placeholder image
+    const fallbackImage = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800';
+    
+    // If no URL, use fallback
+    if (!url) return fallbackImage;
+    
+    // Only accept absolute URLs (http:// or https://)
+    // Reject relative paths, PDFs, documents, etc.
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return fallbackImage;
+    }
+    
+    // If it's a PDF even with absolute URL, use fallback
+    if (url.includes('.pdf')) {
+      return fallbackImage;
+    }
+    
+    // Valid absolute URL
+    return url;
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-[95%] mx-auto">
-          <div className="flex items-center justify-between h-16 px-4">
-            {/* Left: Logo + Navigation */}
-            <div className="flex items-center gap-8">
-              {/* Logo */}
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl text-gray-900">
-                  BatDong<span className="text-red-600">Scam</span>
-                </span>
-              </Link>
-
-              {/* Desktop Navigation - RIGHT of logo */}
-              <div className="hidden lg:flex items-center gap-6">
-                <Link href="/properties?type=rent" className="text-sm font-bold text-gray-900 hover:text-gray-700">Rent</Link>
-                <Link href="/properties?type=sale" className="text-sm font-bold text-gray-900 hover:text-gray-700">Buy</Link>
-                <Link href="/projects" className="text-sm font-bold text-gray-900 hover:text-gray-700">Projects</Link>
-              </div>
-            </div>
-
-            {/* Auth Buttons + Post Listing */}
-            <div className="hidden lg:flex items-center gap-3">
-              <Link href="/login" className="text-sm font-bold text-gray-900 hover:text-gray-700">
-                Login
-              </Link>
-              <Link href="/register" className="text-sm font-bold text-gray-900 hover:text-gray-700">
-                Sign Up
-              </Link>
-              <Link
-                href="/login"
-                className="px-5 py-2.5 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Post new listing
-              </Link>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-gray-500 hover:text-gray-700"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-gray-100 py-4">
-            <div className="max-w-[85%] mx-auto px-4 space-y-3">
-              <Link href="/properties?type=rent" className="block py-2 text-sm font-bold text-gray-900">Rent</Link>
-              <Link href="/properties?type=sale" className="block py-2 text-sm font-bold text-gray-900">Buy</Link>
-              <Link href="/projects" className="block py-2 text-sm font-bold text-gray-900">Projects</Link>
-              <div className="pt-4 space-y-2">
-                <Link href="/login" className="block py-2 text-center text-sm font-bold text-gray-900 border border-gray-300 rounded-lg">Login</Link>
-                <Link href="/register" className="block py-2 text-center text-sm font-bold text-gray-900 border border-gray-300 rounded-lg">Sign Up</Link>
-                <Link href="/owner/properties/new" className="block py-2 text-center text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg">Post new listing</Link>
-              </div>
-            </div>
-          </div>
-        )}
-      </nav>
+      <NavBar />
 
       {/* Hero Section */}
       <section className="pt-24 pb-16 bg-gradient-to-br from-red-50 via-white to-orange-50">
@@ -247,59 +189,60 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProperties.map((property) => (
-              <Link
-                key={property.id}
-                href={`/property/${property.id}`}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
-              >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={property.image}
-                    alt={property.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                      property.type === 'Sale' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
-                    }`}>
-                      For {property.type}
-                    </span>
+          {isLoadingFeatured ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {(featuredProperties || []).map((property) => (
+                <Link
+                  key={property.id}
+                  href={`/property/${property.id}`}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100"
+                >
+                  {/* Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={getImageUrl(property.thumbnailUrl)}
+                      alt={property.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                        property.transactionType === 'SALE' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+                      }`}>
+                        For {property.transactionType === 'SALE' ? 'Sale' : 'Rent'}
+                      </span>
+                    </div>
+                    <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors">
+                      <Heart className={`w-4 h-4 ${property.favorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+                    </button>
                   </div>
-                  <button className="absolute top-3 right-3 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors">
-                    <Heart className={`w-4 h-4 ${property.isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
-                  </button>
-                </div>
 
-                {/* Content */}
-                <div className="p-4">
-                  <p className="text-xl font-bold text-red-600">{property.price}</p>
-                  <h3 className="font-semibold text-gray-900 mt-1 line-clamp-1">{property.title}</h3>
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-2">
-                    <MapPin className="w-3 h-3" />
-                    {property.location}
-                  </p>
+                  {/* Content */}
+                  <div className="p-4">
+                    <p className="text-xl font-bold text-red-600">{formatPrice(property.price, property.transactionType)}</p>
+                    <h3 className="font-semibold text-gray-900 mt-1 line-clamp-1">{property.title}</h3>
+                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-2">
+                      <MapPin className="w-3 h-3" />
+                      {property.location}
+                    </p>
 
-                  <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Bed className="w-4 h-4 text-gray-400" />
-                      {property.bedrooms}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Bath className="w-4 h-4 text-gray-400" />
-                      {property.bathrooms}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Square className="w-4 h-4 text-gray-400" />
-                      {property.area}
-                    </span>
+                    <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Square className="w-4 h-4 text-gray-400" />
+                        {property.totalArea}m²
+                      </span>
+                      <span className="text-gray-400">
+                        {property.numberOfImages} photos
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
           <div className="sm:hidden mt-6 text-center">
             <Link

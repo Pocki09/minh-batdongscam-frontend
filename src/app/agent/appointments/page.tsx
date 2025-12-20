@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, User, Phone, Search, Eye, Check, X } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
+import { assignmentService } from '@/lib/api/services/assignment.service';
 
 type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
 
@@ -19,57 +20,7 @@ interface Appointment {
   status: AppointmentStatus;
 }
 
-// Mock data matching the design
-const mockAppointments: Appointment[] = [
-  {
-    id: 1,
-    propertyId: 'PROP-2024-004',
-    propertyName: 'Cozy Studio Near Park',
-    propertyImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=200',
-    propertyAddress: 'Binh Thanh District',
-    customerName: 'Phạm Văn Single',
-    customerPhone: '0909333444',
-    date: '2024-01-18',
-    time: '11:00 AM',
-    status: 'COMPLETED',
-  },
-  {
-    id: 2,
-    propertyId: 'PROP-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    propertyImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=200',
-    propertyAddress: 'District 7, Ho Chi Minh City',
-    customerName: 'Nguyễn Văn Khách',
-    customerPhone: '0909123456',
-    date: '2024-01-20',
-    time: '10:00 AM',
-    status: 'COMPLETED',
-  },
-  {
-    id: 3,
-    propertyId: 'PROP-2024-002',
-    propertyName: 'Luxury Apartment Downtown',
-    propertyImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=200',
-    propertyAddress: 'District 1, Ho Chi Minh City',
-    customerName: 'Lê Thị Customer',
-    customerPhone: '0909654321',
-    date: '2024-01-20',
-    time: '02:30 PM',
-    status: 'PENDING',
-  },
-  {
-    id: 4,
-    propertyId: 'PROP-2024-003',
-    propertyName: 'Family House with Garden',
-    propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=200',
-    propertyAddress: 'Thu Duc City, Ho Chi Minh',
-    customerName: 'Trần Văn Buyer',
-    customerPhone: '0909111222',
-    date: '2024-01-21',
-    time: '09:00 AM',
-    status: 'CONFIRMED',
-  },
-];
+// Removed mock data - using real API
 
 const statusColors: Record<AppointmentStatus, string> = {
   PENDING: 'bg-yellow-100 text-yellow-700',
@@ -79,11 +30,41 @@ const statusColors: Record<AppointmentStatus, string> = {
 };
 
 export default function AgentAppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [filter, setFilter] = useState<'All' | 'Upcoming' | 'Completed'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [confirmModal, setConfirmModal] = useState<{ type: 'confirm' | 'cancel'; appointment: Appointment } | null>(null);
+
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    setIsLoading(true);
+    try {
+      const response = await assignmentService.getMyViewingList();
+      // Map API response to component interface
+      const mappedData: Appointment[] = (response.data || []).map((item: any) => ({
+        id: item.id,
+        propertyId: item.propertyId || item.id,
+        propertyName: item.propertyTitle || 'Untitled Property',
+        propertyImage: item.propertyImageUrl || '',
+        propertyAddress: item.propertyAddress || '',
+        customerName: item.customerName || 'Unknown',
+        customerPhone: item.customerPhone || '',
+        date: item.appointmentDate || new Date().toISOString().split('T')[0],
+        time: item.appointmentTime || '10:00 AM',
+        status: item.status || 'PENDING'
+      }));
+      setAppointments(mappedData);
+    } catch (error) {
+      console.error('Failed to load appointments:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredAppointments = appointments.filter(a => {
     const matchesSearch = a.propertyName.toLowerCase().includes(searchTerm.toLowerCase()) ||

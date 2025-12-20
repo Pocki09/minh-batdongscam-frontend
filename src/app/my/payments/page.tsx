@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wallet, Calendar, CreditCard, Download, Eye, Clock, Check, AlertCircle, ChevronRight, FileText } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
+import { paymentService, Payment as ApiPayment } from '@/lib/api/services/payment.service';
+import Skeleton from '@/app/components/ui/Skeleton';
 
-type PaymentStatus = 'Pending' | 'Paid' | 'Overdue' | 'Processing';
-type PaymentType = 'Deposit' | 'Advance' | 'Installment' | 'Full Payment' | 'Monthly' | 'Penalty';
+type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+type PaymentType = 'CONTRACT' | 'SERVICE_FEE';
 
 interface Payment {
-  id: number;
+  id: string;
   paymentNumber: string;
   contractNumber: string;
   propertyName: string;
@@ -18,130 +20,76 @@ interface Payment {
   paidDate: string | null;
   status: PaymentStatus;
   paymentType: PaymentType;
-  installmentNumber?: number;
-  totalInstallments?: number;
+  description: string;
 }
 
-// Mock data
-const mockPayments: Payment[] = [
-  {
-    id: 1,
-    paymentNumber: 'PAY-2024-001',
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    amount: '$85,000',
-    dueDate: '2024-02-15',
-    paidDate: null,
-    status: 'Pending',
-    paymentType: 'Installment',
-    installmentNumber: 3,
-    totalInstallments: 10,
-  },
-  {
-    id: 2,
-    paymentNumber: 'PAY-2024-002',
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    amount: '$85,000',
-    dueDate: '2024-01-15',
-    paidDate: '2024-01-14',
-    status: 'Paid',
-    paymentType: 'Installment',
-    installmentNumber: 2,
-    totalInstallments: 10,
-  },
-  {
-    id: 3,
-    paymentNumber: 'PAY-2024-003',
-    contractNumber: 'CTR-2024-002',
-    propertyName: 'Luxury Apartment Downtown',
-    amount: '$1,200',
-    dueDate: '2024-02-01',
-    paidDate: null,
-    status: 'Pending',
-    paymentType: 'Monthly',
-  },
-  {
-    id: 4,
-    paymentNumber: 'PAY-2023-050',
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    amount: '$85,000',
-    dueDate: '2023-12-15',
-    paidDate: '2023-12-15',
-    status: 'Paid',
-    paymentType: 'Deposit',
-  },
-  {
-    id: 5,
-    paymentNumber: 'PAY-2024-005',
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    amount: '$2,500',
-    dueDate: '2024-01-10',
-    paidDate: null,
-    status: 'Overdue',
-    paymentType: 'Penalty',
-  },
-];
-
 const statusIcons: Record<PaymentStatus, typeof Clock> = {
-  Pending: Clock,
-  Paid: Check,
-  Overdue: AlertCircle,
-  Processing: Clock,
+  PENDING: Clock,
+  COMPLETED: Check,
+  FAILED: AlertCircle,
+  CANCELLED: AlertCircle,
 };
 
 const statusVariants: Record<PaymentStatus, 'warning' | 'success' | 'danger' | 'info'> = {
-  Pending: 'warning',
-  Paid: 'success',
-  Overdue: 'danger',
-  Processing: 'info',
-};
-
-const paymentTypeVariants: Record<PaymentType, 'deposit' | 'advance' | 'installment' | 'fullpay' | 'monthly' | 'penalty'> = {
-  Deposit: 'deposit',
-  Advance: 'advance',
-  Installment: 'installment',
-  'Full Payment': 'fullpay',
-  Monthly: 'monthly',
-  Penalty: 'penalty',
+  PENDING: 'warning',
+  COMPLETED: 'success',
+  FAILED: 'danger',
+  CANCELLED: 'danger',
 };
 
 export default function PaymentsPage() {
-  const [payments, setPayments] = useState<Payment[]>(mockPayments);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [showPayModal, setShowPayModal] = useState(false);
-  const [payingPayment, setPayingPayment] = useState<Payment | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'paid'>('all');
 
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const loadPayments = async () => {
+    setIsLoading(true);
+    try {
+      const data = await paymentService.getPayments();
+      const mappedData: Payment[] = data.map(p => ({
+        id: p.id,
+        paymentNumber: p.id,
+        contractNumber: '',
+        propertyName: p.description,
+        amount: `$${p.amount.toLocaleString()}`,
+        dueDate: p.createdAt,
+        paidDate: p.status === 'COMPLETED' ? p.createdAt : null,
+        status: p.status,
+        paymentType: p.paymentType === 'CONTRACT' ? 'CONTRACT' : 'SERVICE_FEE',
+        description: p.description
+      }));
+      setPayments(mappedData);
+    } catch (error) {
+      console.error('Failed to load payments:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const filteredPayments = payments.filter(p => {
-    if (filter === 'pending') return p.status === 'Pending' || p.status === 'Overdue';
-    if (filter === 'paid') return p.status === 'Paid';
+    if (filter === 'pending') return p.status === 'PENDING' || p.status === 'FAILED';
+    if (filter === 'paid') return p.status === 'COMPLETED';
     return true;
   });
 
   // Stats
-  const totalPending = payments.filter(p => p.status === 'Pending' || p.status === 'Overdue').reduce((sum, p) => sum + parseFloat(p.amount.replace(/[^0-9.]/g, '')), 0);
-  const totalPaid = payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + parseFloat(p.amount.replace(/[^0-9.]/g, '')), 0);
-  const overdueCount = payments.filter(p => p.status === 'Overdue').length;
+  const totalPending = payments.filter(p => p.status === 'PENDING' || p.status === 'FAILED').reduce((sum, p) => sum + parseFloat(p.amount.replace(/[^0-9.]/g, '')), 0);
+  const totalPaid = payments.filter(p => p.status === 'COMPLETED').reduce((sum, p) => sum + parseFloat(p.amount.replace(/[^0-9.]/g, '')), 0);
+  const overdueCount = payments.filter(p => p.status === 'FAILED').length;
 
-  const handlePay = (payment: typeof mockPayments[0]) => {
-    setPayingPayment(payment);
-    setShowPayModal(true);
-  };
-
-  const confirmPayment = () => {
-    if (payingPayment) {
-      setPayments(payments.map(p => 
-        p.id === payingPayment.id 
-          ? { ...p, status: 'Paid' as const, paidDate: new Date().toISOString().split('T')[0] }
-          : p
-      ));
-      setShowPayModal(false);
-      setPayingPayment(null);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton height={60} />
+        <Skeleton height={400} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -228,9 +176,9 @@ export default function PaymentsPage() {
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b">
               <tr>
                 <th className="px-6 py-4 font-medium">Payment</th>
-                <th className="px-6 py-4 font-medium">Type</th>
+                <th className="px-6 py-4 font-medium">Description</th>
                 <th className="px-6 py-4 font-medium">Amount</th>
-                <th className="px-6 py-4 font-medium">Due Date</th>
+                <th className="px-6 py-4 font-medium">Date</th>
                 <th className="px-6 py-4 font-medium">Status</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
@@ -244,18 +192,11 @@ export default function PaymentsPage() {
                       <div>
                         <p className="font-medium text-gray-900">{payment.paymentNumber}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{payment.propertyName}</p>
-                        <p className="text-xs text-gray-400">{payment.contractNumber}</p>
+                        <p className="text-xs text-gray-400">{payment.contractNumber || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={paymentTypeVariants[payment.paymentType]}>
-                        {payment.paymentType}
-                      </Badge>
-                      {payment.installmentNumber && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {payment.installmentNumber}/{payment.totalInstallments}
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-600">{payment.description}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-bold text-gray-900">{payment.amount}</p>
@@ -286,7 +227,7 @@ export default function PaymentsPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {payment.status === 'Paid' && (
+                        {payment.status === 'COMPLETED' && (
                           <button
                             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                             title="Download Receipt"
@@ -294,10 +235,11 @@ export default function PaymentsPage() {
                             <Download className="w-4 h-4" />
                           </button>
                         )}
-                        {(payment.status === 'Pending' || payment.status === 'Overdue') && (
+                        {(payment.status === 'PENDING' || payment.status === 'FAILED') && (
                           <button
-                            onClick={() => handlePay(payment)}
                             className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                            title="Payment not available - contact support"
+                            disabled
                           >
                             <CreditCard className="w-3 h-3" />
                             Pay
@@ -332,25 +274,25 @@ export default function PaymentsPage() {
           <div className="space-y-4">
             {/* Status Banner */}
             <div className={`p-4 rounded-lg flex items-center gap-3 ${
-              selectedPayment.status === 'Paid' ? 'bg-green-50 border border-green-200' :
-              selectedPayment.status === 'Overdue' ? 'bg-red-50 border border-red-200' :
+              selectedPayment.status === 'COMPLETED' ? 'bg-green-50 border border-green-200' :
+              selectedPayment.status === 'FAILED' ? 'bg-red-50 border border-red-200' :
               'bg-yellow-50 border border-yellow-200'
             }`}>
               {React.createElement(statusIcons[selectedPayment.status], {
                 className: `w-5 h-5 ${
-                  selectedPayment.status === 'Paid' ? 'text-green-600' :
-                  selectedPayment.status === 'Overdue' ? 'text-red-600' :
+                  selectedPayment.status === 'COMPLETED' ? 'text-green-600' :
+                  selectedPayment.status === 'FAILED' ? 'text-red-600' :
                   'text-yellow-600'
                 }`
               })}
               <div>
                 <p className={`font-medium ${
-                  selectedPayment.status === 'Paid' ? 'text-green-800' :
-                  selectedPayment.status === 'Overdue' ? 'text-red-800' :
+                  selectedPayment.status === 'COMPLETED' ? 'text-green-800' :
+                  selectedPayment.status === 'FAILED' ? 'text-red-800' :
                   'text-yellow-800'
                 }`}>
-                  {selectedPayment.status === 'Paid' ? 'Payment Completed' :
-                   selectedPayment.status === 'Overdue' ? 'Payment Overdue' :
+                  {selectedPayment.status === 'COMPLETED' ? 'Payment Completed' :
+                   selectedPayment.status === 'FAILED' ? 'Payment Failed' :
                    'Payment Pending'}
                 </p>
                 {selectedPayment.paidDate && (
@@ -374,10 +316,8 @@ export default function PaymentsPage() {
                 <p className="font-medium text-gray-900">{selectedPayment.dueDate}</p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500">Payment Type</p>
-                <Badge variant={paymentTypeVariants[selectedPayment.paymentType]}>
-                  {selectedPayment.paymentType}
-                </Badge>
+                <p className="text-xs text-gray-500">Description</p>
+                <p className="text-sm text-gray-900">{selectedPayment.description}</p>
               </div>
             </div>
 
@@ -393,102 +333,18 @@ export default function PaymentsPage() {
 
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t">
-              {selectedPayment.status === 'Paid' && (
+              {selectedPayment.status === 'COMPLETED' && (
                 <button className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center justify-center gap-2">
                   <Download className="w-4 h-4" />
                   Download Receipt
                 </button>
               )}
-              {(selectedPayment.status === 'Pending' || selectedPayment.status === 'Overdue') && (
-                <button
-                  onClick={() => {
-                    setSelectedPayment(null);
-                    handlePay(selectedPayment);
-                  }}
-                  className="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="w-4 h-4" />
-                  Pay Now
-                </button>
-              )}
             </div>
           </div>
         </Modal>
       )}
 
-      {/* Pay Modal (PayOS Mock) */}
-      {showPayModal && payingPayment && (
-        <Modal
-          isOpen={showPayModal}
-          onClose={() => setShowPayModal(false)}
-          title="Complete Payment"
-        >
-          <div className="space-y-4">
-            {/* Amount */}
-            <div className="text-center py-6 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-500">Amount to Pay</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">{payingPayment.amount}</p>
-            </div>
 
-            {/* Payment Methods */}
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-3">Select Payment Method</p>
-              <div className="space-y-2">
-                <label className="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors">
-                  <input type="radio" name="payment" defaultChecked className="text-red-600" />
-                  <div className="ml-3 flex-1">
-                    <p className="font-medium text-gray-900">PayOS</p>
-                    <p className="text-xs text-gray-500">Pay with QR Code or Bank Transfer</p>
-                  </div>
-                  <img src="https://payos.vn/docs/img/logo.svg" alt="PayOS" className="h-6" />
-                </label>
-                <label className="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-red-500 transition-colors opacity-50">
-                  <input type="radio" name="payment" disabled className="text-red-600" />
-                  <div className="ml-3 flex-1">
-                    <p className="font-medium text-gray-900">Credit Card</p>
-                    <p className="text-xs text-gray-500">Coming soon</p>
-                  </div>
-                  <CreditCard className="w-6 h-6 text-gray-400" />
-                </label>
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Payment</span>
-                <span className="text-gray-900">{payingPayment.paymentNumber}</span>
-              </div>
-              <div className="flex justify-between text-sm mt-2">
-                <span className="text-gray-500">Property</span>
-                <span className="text-gray-900">{payingPayment.propertyName}</span>
-              </div>
-              <hr className="my-3 border-gray-200" />
-              <div className="flex justify-between">
-                <span className="font-medium text-gray-900">Total</span>
-                <span className="font-bold text-red-600">{payingPayment.amount}</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => setShowPayModal(false)}
-                className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmPayment}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <CreditCard className="w-4 h-4" />
-                Proceed to Pay
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

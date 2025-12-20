@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building, Plus, Search, Eye, Edit, Trash2, MapPin, Bed, Bath, Square, MoreVertical, Grid, List, Filter } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import Link from 'next/link';
+import { propertyService } from '@/lib/api/services/property.service';
+import { accountService } from '@/lib/api/services/account.service';
 
 type PropertyStatus = 'Active' | 'Pending' | 'Rented' | 'Sold' | 'Inactive';
 type PropertyType = 'Sale' | 'Rent';
@@ -25,84 +27,7 @@ interface Property {
   createdAt: string;
 }
 
-// Mock data
-const mockProperties: Property[] = [
-  {
-    id: 1,
-    title: 'Modern Villa with Pool',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    address: 'District 7, Ho Chi Minh City',
-    price: '$850,000',
-    type: 'Sale',
-    status: 'Active',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: '280 m²',
-    views: 125,
-    inquiries: 8,
-    createdAt: '2024-01-10',
-  },
-  {
-    id: 2,
-    title: 'Luxury Apartment Downtown',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-    address: 'District 1, Ho Chi Minh City',
-    price: '$1,200/month',
-    type: 'Rent',
-    status: 'Rented',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '120 m²',
-    views: 89,
-    inquiries: 5,
-    createdAt: '2024-01-05',
-  },
-  {
-    id: 3,
-    title: 'Family House with Garden',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-    address: 'Thu Duc City, Ho Chi Minh',
-    price: '$650,000',
-    type: 'Sale',
-    status: 'Active',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: '350 m²',
-    views: 67,
-    inquiries: 3,
-    createdAt: '2024-01-15',
-  },
-  {
-    id: 4,
-    title: 'Cozy Studio Near Park',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400',
-    address: 'Binh Thanh District',
-    price: '$450/month',
-    type: 'Rent',
-    status: 'Active',
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '45 m²',
-    views: 45,
-    inquiries: 2,
-    createdAt: '2024-01-18',
-  },
-  {
-    id: 5,
-    title: 'Penthouse with City View',
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400',
-    address: 'District 3, Ho Chi Minh City',
-    price: '$2,500,000',
-    type: 'Sale',
-    status: 'Pending',
-    bedrooms: 3,
-    bathrooms: 3,
-    area: '200 m²',
-    views: 234,
-    inquiries: 15,
-    createdAt: '2024-01-12',
-  },
-];
+// Removed mock data - using real API
 
 const statusVariants: Record<PropertyStatus, 'success' | 'warning' | 'info' | 'danger' | 'default'> = {
   Active: 'success',
@@ -113,12 +38,55 @@ const statusVariants: Record<PropertyStatus, 'success' | 'warning' | 'info' | 'd
 };
 
 export default function OwnerPropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'Sale' | 'Rent'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | PropertyStatus>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deleteModal, setDeleteModal] = useState<Property | null>(null);
+
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    setIsLoading(true);
+    try {
+      const user = await accountService.getMe();
+      const response = await propertyService.getOwnerProperties(user.id);
+      const mappedData: Property[] = (response.data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title || 'Untitled',
+        image: item.imageUrl || '',
+        address: item.address || '',
+        price: item.price ? `$${item.price.toLocaleString()}` : 'N/A',
+        type: item.transactionType === 'SALE' ? 'Sale' : 'Rent',
+        status: mapStatus(item.status),
+        bedrooms: item.bedrooms || 0,
+        bathrooms: item.bathrooms || 0,
+        area: item.area ? `${item.area} m²` : 'N/A',
+        views: 0,
+        inquiries: 0,
+        createdAt: item.createdAt || ''
+      }));
+      setProperties(mappedData);
+    } catch (error) {
+      console.error('Failed to load properties:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const mapStatus = (apiStatus: string): PropertyStatus => {
+    switch (apiStatus) {
+      case 'AVAILABLE': return 'Active';
+      case 'PENDING': return 'Pending';
+      case 'RENTED': return 'Rented';
+      case 'SOLD': return 'Sold';
+      default: return 'Inactive';
+    }
+  };
 
   const filteredProperties = properties.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -132,10 +100,16 @@ export default function OwnerPropertiesPage() {
     setDeleteModal(property);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteModal) {
-      setProperties(properties.filter(p => p.id !== deleteModal.id));
-      setDeleteModal(null);
+      try {
+        await propertyService.deleteProperty(deleteModal.id.toString());
+        setProperties(properties.filter(p => p.id !== deleteModal.id));
+        setDeleteModal(null);
+      } catch (error) {
+        console.error('Failed to delete property:', error);
+        alert('Failed to delete property');
+      }
     }
   };
 

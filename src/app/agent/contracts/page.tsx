@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Search, Eye, Download, Printer, Send, Building, User, Calendar, DollarSign } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import Link from 'next/link';
+import { contractService } from '@/lib/api/services/contract.service';
 
 type ContractStatus = 'Draft' | 'Pending Signature' | 'Active' | 'Completed' | 'Cancelled';
 type ContractType = 'Sale' | 'Rental';
@@ -27,77 +28,7 @@ interface Contract {
   createdAt: string;
 }
 
-// Mock data
-const mockContracts: Contract[] = [
-  {
-    id: 1,
-    contractNumber: 'CTR-2024-001',
-    propertyName: 'Modern Villa with Pool',
-    propertyImage: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    propertyAddress: 'District 7, Ho Chi Minh City',
-    contractType: 'Sale',
-    status: 'Active',
-    customerName: 'Nguyễn Văn Khách',
-    customerPhone: '0909123456',
-    ownerName: 'Nguyễn Văn Owner',
-    startDate: '2024-01-15',
-    endDate: '2024-12-31',
-    totalValue: '$850,000',
-    commission: '$17,000',
-    createdAt: '2024-01-10',
-  },
-  {
-    id: 2,
-    contractNumber: 'CTR-2024-002',
-    propertyName: 'Luxury Apartment Downtown',
-    propertyImage: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-    propertyAddress: 'District 1, Ho Chi Minh City',
-    contractType: 'Rental',
-    status: 'Pending Signature',
-    customerName: 'Lê Thị Customer',
-    customerPhone: '0909654321',
-    ownerName: 'Lê Văn Owner',
-    startDate: '2024-02-01',
-    endDate: '2025-01-31',
-    totalValue: '$14,400/year',
-    commission: '$1,200',
-    createdAt: '2024-01-18',
-  },
-  {
-    id: 3,
-    contractNumber: 'CTR-2024-003',
-    propertyName: 'Family House with Garden',
-    propertyImage: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-    propertyAddress: 'Thu Duc City, Ho Chi Minh',
-    contractType: 'Sale',
-    status: 'Draft',
-    customerName: 'Trần Văn Buyer',
-    customerPhone: '0909111222',
-    ownerName: 'Hoàng Thị Owner',
-    startDate: '',
-    endDate: '',
-    totalValue: '$650,000',
-    commission: '$13,000',
-    createdAt: '2024-01-20',
-  },
-  {
-    id: 4,
-    contractNumber: 'CTR-2023-050',
-    propertyName: 'Cozy Studio Near Park',
-    propertyImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400',
-    propertyAddress: 'Binh Thanh District',
-    contractType: 'Rental',
-    status: 'Completed',
-    customerName: 'Phạm Văn Tenant',
-    customerPhone: '0909333444',
-    ownerName: 'Phạm Văn Owner',
-    startDate: '2023-01-01',
-    endDate: '2023-12-31',
-    totalValue: '$5,400/year',
-    commission: '$540',
-    createdAt: '2022-12-15',
-  },
-];
+// Removed mock data - using real API
 
 const statusVariants: Record<ContractStatus, 'default' | 'warning' | 'info' | 'success' | 'danger'> = {
   Draft: 'default',
@@ -108,10 +39,54 @@ const statusVariants: Record<ContractStatus, 'default' | 'warning' | 'info' | 's
 };
 
 export default function AgentContractsPage() {
-  const [contracts] = useState<Contract[]>(mockContracts);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [filter, setFilter] = useState<'all' | 'active' | 'pending' | 'completed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    loadContracts();
+  }, []);
+
+  const loadContracts = async () => {
+    setIsLoading(true);
+    try {
+      const data = await contractService.getAgentContracts();
+      const mappedData: Contract[] = data.map((item: any) => ({
+        id: item.id,
+        contractNumber: item.id,
+        propertyName: item.propertyTitle || 'Untitled',
+        propertyImage: '',
+        propertyAddress: item.propertyAddress || '',
+        contractType: item.contractType === 'SALE' ? 'Sale' : 'Rental',
+        status: mapStatus(item.status),
+        customerName: item.customerName || 'Unknown',
+        customerPhone: '',
+        ownerName: item.ownerName || 'Unknown',
+        startDate: item.startDate || '',
+        endDate: item.endDate || '',
+        totalValue: item.price ? `$${item.price.toLocaleString()}` : 'N/A',
+        commission: 'N/A',
+        createdAt: item.createdAt || ''
+      }));
+      setContracts(mappedData);
+    } catch (error) {
+      console.error('Failed to load contracts:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const mapStatus = (apiStatus: string): ContractStatus => {
+    switch (apiStatus) {
+      case 'ACTIVE': return 'Active';
+      case 'PENDING': return 'Pending Signature';
+      case 'COMPLETED': return 'Completed';
+      case 'CANCELLED': return 'Cancelled';
+      default: return 'Draft';
+    }
+  };
 
   const filteredContracts = contracts.filter(c => {
     const matchesSearch = c.propertyName.toLowerCase().includes(searchTerm.toLowerCase()) ||

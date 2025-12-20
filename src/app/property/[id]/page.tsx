@@ -1,74 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Building, MapPin, Bed, Bath, Square, Heart, Share2, Phone, Mail, Calendar, ChevronLeft, ChevronRight, Star, User, Check, Clock, Shield, Menu, X } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Building, MapPin, Bed, Bath, Square, Heart, Share2, Phone, Mail, Calendar, ChevronLeft, ChevronRight, Star, User, Check, Clock, Shield, Menu, X, Loader2, AlertCircle } from 'lucide-react';
+import NavBar from '@/app/components/layout/NavBar';
 import Modal from '@/app/components/ui/Modal';
 import DocumentList from '@/app/components/features/properties/details/DocumentList';
 import Footer from '@/app/components/layout/Footer';
-
-// Mock property data
-const mockProperty = {
-  id: 1,
-  title: 'Modern Villa with Pool',
-  images: [
-    'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200',
-    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
-    'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200',
-    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=1200',
-  ],
-  price: '$850,000',
-  type: 'Sale',
-  category: 'Villa',
-  location: 'District 7, Ho Chi Minh City',
-  address: '123 Nguyen Van Linh, Tan Phu Ward, District 7, Ho Chi Minh City',
-  bedrooms: 4,
-  bathrooms: 3,
-  area: '280 m²',
-  yearBuilt: 2022,
-  description: `This stunning modern villa offers the perfect blend of luxury and comfort. Located in the prestigious District 7, this property features contemporary architecture with high-end finishes throughout.
-
-The spacious open-plan living area seamlessly connects to the gourmet kitchen, perfect for entertaining. Floor-to-ceiling windows flood the space with natural light and offer beautiful views of the private pool and landscaped garden.
-
-The master suite includes a walk-in closet and a spa-like ensuite bathroom. Three additional bedrooms provide ample space for family or guests. The property also features a private cinema room, gym, and a two-car garage.`,
-  features: [
-    'Swimming Pool',
-    'Private Garden',
-    'Smart Home System',
-    'Air Conditioning',
-    'Security System',
-    'Private Garage',
-    'Modern Kitchen',
-    'Cinema Room',
-    'Gym',
-    'Balcony',
-  ],
-  agent: {
-    name: 'Trần Văn Agent',
-    phone: '0909 123 456',
-    email: 'agent@batdongscam.vn',
-    rating: 4.8,
-    reviews: 45,
-    avatar: null,
-  },
-  owner: {
-    name: 'Nguyễn Văn Owner',
-    verified: true,
-  },
-  documents: [
-    { id: 1, name: 'Property Title Deed.pdf', type: 'PDF', size: '2.4 MB', url: '#' },
-    { id: 2, name: 'Building Permit.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
-    { id: 3, name: 'Floor Plan.pdf', type: 'PDF', size: '3.2 MB', url: '#' },
-  ],
-  isFavorite: false,
-  views: 234,
-  listedAt: '2024-01-10',
-};
+import { propertyService } from '@/lib/api/services/property.service';
+import { PropertyDetails } from '@/lib/api/types';
 
 export default function PropertyDetailPage() {
+  const params = useParams();
+  const propertyId = params.id as string;
+
+  // API state
+  const [property, setProperty] = useState<PropertyDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // UI state
   const [currentImage, setCurrentImage] = useState(0);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(mockProperty.isFavorite);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Booking form state
@@ -81,12 +36,42 @@ export default function PropertyDetailPage() {
     message: '',
   });
 
+  // Fetch property details
+  useEffect(() => {
+    const fetchProperty = async () => {
+      if (!propertyId) return;
+      
+      setIsLoading(true);
+      setError('');
+
+      try {
+        const data = await propertyService.getPropertyDetails(propertyId);
+        setProperty(data);
+        // Set favorite status from API if available
+        // setIsFavorite(data.isFavorite || false);
+      } catch (err: any) {
+        console.error('Failed to fetch property:', err);
+        if (err.response?.status === 404) {
+          setError('Property not found');
+        } else {
+          setError('Failed to load property details. Please try again later.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperty();
+  }, [propertyId]);
+
   const nextImage = () => {
-    setCurrentImage((prev) => (prev + 1) % mockProperty.images.length);
+    if (!property?.mediaList.length) return;
+    setCurrentImage((prev) => (prev + 1) % property.mediaList.length);
   };
 
   const prevImage = () => {
-    setCurrentImage((prev) => (prev - 1 + mockProperty.images.length) % mockProperty.images.length);
+    if (!property?.mediaList.length) return;
+    setCurrentImage((prev) => (prev - 1 + property.mediaList.length) % property.mediaList.length);
   };
 
   const handleBooking = (e: React.FormEvent) => {
@@ -96,50 +81,50 @@ export default function PropertyDetailPage() {
     setShowBookingModal(false);
   };
 
+  const formatPrice = (amount: number, transactionType: string) => {
+    if (transactionType === 'RENT') {
+      return `$${amount.toLocaleString()}/month`;
+    }
+    return `$${amount.toLocaleString()}`;
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !property) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600 mb-6">{error || 'Property not found'}</p>
+          <Link
+            href="/properties"
+            className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors inline-block"
+          >
+            Back to Properties
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100">
-        <div className="max-w-[95%] mx-auto">
-          <div className="flex items-center justify-between h-16 px-4">
-            {/* Left: Logo + Navigation */}
-            <div className="flex items-center gap-8">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center">
-                  <Building className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-bold text-xl text-gray-900">
-                  BatDong<span className="text-red-600">Scam</span>
-                </span>
-              </Link>
-
-              {/* Desktop Navigation - RIGHT of logo */}
-              <div className="hidden lg:flex items-center gap-6">
-                <Link href="/properties?type=rent" className="text-sm font-bold text-gray-900 hover:text-gray-700">Rent</Link>
-                <Link href="/properties?type=sale" className="text-sm font-bold text-gray-900 hover:text-gray-700">Buy</Link>
-                <Link href="/projects" className="text-sm font-bold text-gray-900 hover:text-gray-700">Projects</Link>
-              </div>
-            </div>
-
-            {/* Right: Auth Buttons */}
-            <div className="hidden lg:flex items-center gap-4">
-              <Link href="/login" className="text-sm font-bold text-gray-900 hover:text-gray-700">Login</Link>
-              <Link href="/register" className="px-5 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Sign Up</Link>
-            </div>
-
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="lg:hidden p-2">
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-      </nav>
+      <NavBar />
 
       <div className="pt-16">
         {/* Image Gallery */}
         <div className="relative h-[50vh] lg:h-[60vh] bg-gray-900">
           <img
-            src={mockProperty.images[currentImage]}
-            alt={mockProperty.title}
+            src={property.mediaList[currentImage]?.filePath || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=1200'}
+            alt={property.title}
             className="w-full h-full object-cover"
           />
           
@@ -159,20 +144,20 @@ export default function PropertyDetailPage() {
 
           {/* Image Counter */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/60 text-white text-sm rounded-full">
-            {currentImage + 1} / {mockProperty.images.length}
+            {currentImage + 1} / {property.mediaList.length}
           </div>
 
           {/* Thumbnails */}
           <div className="absolute bottom-4 right-4 flex gap-2">
-            {mockProperty.images.map((img, idx) => (
+            {property.mediaList.map((media, idx) => (
               <button
-                key={idx}
+                key={media.id}
                 onClick={() => setCurrentImage(idx)}
                 className={`w-16 h-12 rounded-lg overflow-hidden border-2 transition-all ${
                   currentImage === idx ? 'border-white' : 'border-transparent opacity-70 hover:opacity-100'
                 }`}
               >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={media.filePath} alt="" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -193,9 +178,9 @@ export default function PropertyDetailPage() {
           {/* Type Badge */}
           <div className="absolute top-4 left-4">
             <span className={`px-4 py-2 text-sm font-bold rounded-full ${
-              mockProperty.type === 'Sale' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+              property.transactionType === 'SALE' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
             }`}>
-              For {mockProperty.type}
+              For {property.transactionType === 'SALE' ? 'Sale' : 'Rent'}
             </span>
           </div>
         </div>
@@ -206,35 +191,34 @@ export default function PropertyDetailPage() {
             <div className="lg:col-span-2 space-y-8">
               {/* Price & Title */}
               <div>
-                <p className="text-3xl font-bold text-red-600">{mockProperty.price}</p>
-                <h1 className="text-2xl font-bold text-gray-900 mt-2">{mockProperty.title}</h1>
+                <p className="text-3xl font-bold text-red-600">{formatPrice(property.priceAmount, property.transactionType)}</p>
+                <h1 className="text-2xl font-bold text-gray-900 mt-2">{property.title}</h1>
                 <p className="text-gray-600 flex items-center gap-2 mt-2">
                   <MapPin className="w-5 h-5 text-gray-400" />
-                  {mockProperty.address}
+                  {property.fullAddress}
                 </p>
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-4 gap-4 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="text-center">
-                  <Bed className="w-6 h-6 text-red-600 mx-auto" />
-                  <p className="text-lg font-bold text-gray-900 mt-2">{mockProperty.bedrooms}</p>
-                  <p className="text-sm text-gray-500">Bedrooms</p>
-                </div>
-                <div className="text-center">
-                  <Bath className="w-6 h-6 text-red-600 mx-auto" />
-                  <p className="text-lg font-bold text-gray-900 mt-2">{mockProperty.bathrooms}</p>
-                  <p className="text-sm text-gray-500">Bathrooms</p>
-                </div>
+              <div className="grid grid-cols-3 gap-4 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                {property.bedrooms && (
+                  <div className="text-center">
+                    <Bed className="w-6 h-6 text-red-600 mx-auto" />
+                    <p className="text-lg font-bold text-gray-900 mt-2">{property.bedrooms}</p>
+                    <p className="text-sm text-gray-500">Bedrooms</p>
+                  </div>
+                )}
+                {property.bathrooms && (
+                  <div className="text-center">
+                    <Bath className="w-6 h-6 text-red-600 mx-auto" />
+                    <p className="text-lg font-bold text-gray-900 mt-2">{property.bathrooms}</p>
+                    <p className="text-sm text-gray-500">Bathrooms</p>
+                  </div>
+                )}
                 <div className="text-center">
                   <Square className="w-6 h-6 text-red-600 mx-auto" />
-                  <p className="text-lg font-bold text-gray-900 mt-2">{mockProperty.area}</p>
+                  <p className="text-lg font-bold text-gray-900 mt-2">{property.area}m²</p>
                   <p className="text-sm text-gray-500">Area</p>
-                </div>
-                <div className="text-center">
-                  <Calendar className="w-6 h-6 text-red-600 mx-auto" />
-                  <p className="text-lg font-bold text-gray-900 mt-2">{mockProperty.yearBuilt}</p>
-                  <p className="text-sm text-gray-500">Year Built</p>
                 </div>
               </div>
 
@@ -242,25 +226,44 @@ export default function PropertyDetailPage() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Description</h2>
                 <div className="text-gray-600 whitespace-pre-line leading-relaxed">
-                  {mockProperty.description}
+                  {property.description || 'No description available.'}
                 </div>
               </div>
 
               {/* Features */}
+              {/* Features - Note: API doesn't provide features list, showing property type */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Features & Amenities</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {mockProperty.features.map((feature) => (
-                    <div key={feature} className="flex items-center gap-2 text-gray-600">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Property Information</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {property.propertyType && (
+                    <div className="flex items-center gap-2 text-gray-600">
                       <Check className="w-5 h-5 text-green-500" />
-                      {feature}
+                      {property.propertyType.typeName}
                     </div>
-                  ))}
+                  )}
+                  {property.houseOrientation && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check className="w-5 h-5 text-green-500" />
+                      House Orientation: {property.houseOrientation}
+                    </div>
+                  )}
+                  {property.balconyOrientation && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check className="w-5 h-5 text-green-500" />
+                      Balcony Orientation: {property.balconyOrientation}
+                    </div>
+                  )}
+                  {property.floors && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Check className="w-5 h-5 text-green-500" />
+                      {property.floors} Floors
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Attached Documents */}
-              <DocumentList documents={mockProperty.documents} />
+              {/* Attached Documents - Note: API doesn't provide documents */}
+              {/* <DocumentList documents={[]} /> */}
             </div>
 
             {/* Sidebar */}
@@ -269,56 +272,34 @@ export default function PropertyDetailPage() {
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 sticky top-24">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Property Owner</h3>
                 
-                {/* Agent Info */}
-                <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                  <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {mockProperty.agent.avatar ? (
-                      <img src={mockProperty.agent.avatar} alt="" className="w-full h-full object-cover rounded-full" />
-                    ) : (
-                      mockProperty.agent.name.split(' ').map(n => n[0]).join('').slice(0, 2)
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{mockProperty.agent.name}</p>
-                    <div className="flex items-center gap-1 text-sm text-gray-500">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                      {mockProperty.agent.rating} ({mockProperty.agent.reviews} reviews)
-                    </div>
-                  </div>
-                </div>
-
-                {/* Owner Info */}
+                {/* Owner Info - Primary */}
                 <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                    {mockProperty.owner.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    {`${property.owner.firstName[0]}${property.owner.lastName[0]}`}
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900 flex items-center gap-2">
-                      {mockProperty.owner.name}
-                      {mockProperty.owner.verified && (
-                        <Shield className="w-4 h-4 text-green-500" />
-                      )}
+                      {property.owner.firstName} {property.owner.lastName}
+                      <Shield className="w-4 h-4 text-green-500" />
                     </p>
                     <p className="text-sm text-gray-500">Property Owner</p>
                   </div>
                 </div>
 
-                {/* Agent Info */}
-                <div className="flex items-center gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-500">Sales Agent</p>
-                    <p className="font-medium text-gray-900 flex items-center gap-1">
-                      {mockProperty.agent.name}
-                    </p>
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
-                      <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                      {mockProperty.agent.rating} ({mockProperty.agent.reviews} reviews)
+                {/* Agent Info - Secondary */}
+                {property.agent && (
+                  <div className="flex items-center gap-3 mb-6 p-3 bg-gray-50 rounded-lg">
+                    <User className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Sales Agent</p>
+                      <p className="font-medium text-gray-900 flex items-center gap-1">
+                        {property.agent.firstName} {property.agent.lastName}
+                      </p>
+                      <p className="text-xs text-gray-500">{property.agent.phoneNumber}</p>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Contact Buttons */}
                 <div className="space-y-3">
                   <button
                     onClick={() => setShowBookingModal(true)}
@@ -328,14 +309,14 @@ export default function PropertyDetailPage() {
                     Book a Viewing
                   </button>
                   <a
-                    href={`tel:${mockProperty.agent.phone}`}
+                    href={`tel:${property.owner.phoneNumber}`}
                     className="w-full py-3 border border-gray-300 text-gray-900 font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                   >
                     <Phone className="w-5 h-5" />
-                    Call Agent
+                    Call Owner
                   </a>
                   <a
-                    href={`mailto:${mockProperty.agent.email}`}
+                    href={`mailto:${property.owner.email}`}
                     className="w-full py-3 border border-gray-300 text-gray-900 font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                   >
                     <Mail className="w-5 h-5" />
@@ -347,9 +328,9 @@ export default function PropertyDetailPage() {
                 <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    Listed {mockProperty.listedAt}
+                    Listed {new Date(property.createdAt).toLocaleDateString()}
                   </span>
-                  <span>{mockProperty.views} views</span>
+                  <span className="text-gray-400">ID: {property.id.slice(0, 8)}</span>
                 </div>
               </div>
             </div>

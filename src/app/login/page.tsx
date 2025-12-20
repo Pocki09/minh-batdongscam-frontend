@@ -2,21 +2,39 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Building, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Building, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Footer from '@/app/components/layout/Footer';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     remember: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login:', formData);
-    // Handle login logic here
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await login(formData.email, formData.password);
+      
+      // Force full page reload to ensure NavBar updates
+      window.location.href = '/properties';
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.response?.data?.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,6 +65,14 @@ export default function LoginPage() {
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Error Message */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
               {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -61,6 +87,7 @@ export default function LoginPage() {
                     placeholder="Enter your email"
                     className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -79,11 +106,13 @@ export default function LoginPage() {
                     placeholder="Enter your password"
                     className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    disabled={isLoading}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -98,6 +127,7 @@ export default function LoginPage() {
                     checked={formData.remember}
                     onChange={(e) => setFormData({ ...formData, remember: e.target.checked })}
                     className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                    disabled={isLoading}
                   />
                   <span className="text-sm text-gray-600">Remember me</span>
                 </label>
@@ -109,9 +139,10 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                disabled={isLoading}
+                className="w-full py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Sign In
+                {isLoading ? 'Signing in...' : 'Sign In'}
               </button>
 
               {/* Divider */}
