@@ -5,8 +5,8 @@ import { Search, Filter, Calendar, CheckCircle, Clock, Star, Smile } from 'lucid
 import StatsGrid from '@/app/components/StatsGrid';
 import Modal from '@/app/components/ui/Modal';
 import LocationPicker from '@/app/components/LocationPicker'; 
-import AppointmentTable from '@/app/components/features/appointments/AppointmentTable';
-import AppointmentAdvancedSearch from '@/app/components/features/appointments/AppointmentAdvancedSearch';
+import AppointmentTable from '@/app/components/features/admin/appointments/AppointmentTable';
+import AppointmentAdvancedSearch from '@/app/components/features/admin/appointments/AppointmentAdvancedSearch';
 
 export default function AppointmentsPage() {
   const [isAdvSearchOpen, setIsAdvSearchOpen] = useState(false);

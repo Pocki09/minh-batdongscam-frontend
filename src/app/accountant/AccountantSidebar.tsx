@@ -4,32 +4,20 @@ import React, { memo, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Building,
-  MapPin,
   Users,
-  Calendar,
-  FileText,
-  Wallet,
-  MessageSquareWarning,
-  BarChart3,
-  Bell,
+  CreditCard,
+  Triangle, 
   LogOut,
   Settings,
-  UserCircle,
-  Triangle
 } from 'lucide-react';
 
-// Định nghĩa kiểu dữ liệu cho Menu Item
 interface MenuItemProps {
   href: string;
   icon: React.ElementType;
   label: string;
-  badge?: string | number; // Thêm prop badge để hiện số (ví dụ: 12, 99+)
+  badge?: string | number;
 }
 
-// 1. Component con: SidebarItem
-// Sử dụng memo để tối ưu render
 const SidebarItem = memo(({ item, isActive }: { item: MenuItemProps; isActive: boolean }) => {
   const { href, icon: Icon, label, badge } = item;
 
@@ -38,8 +26,8 @@ const SidebarItem = memo(({ item, isActive }: { item: MenuItemProps; isActive: b
       href={href}
       className={`group flex items-center justify-between px-3 py-2.5 mb-1 rounded-lg transition-all duration-200 ${
         isActive
-          ? 'bg-red-50 text-red-600 font-medium' // Active state: Nền hồng nhạt, chữ đỏ
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Inactive state
+          ? 'bg-red-50 text-red-600 font-medium' 
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' 
       }`}
     >
       <div className="flex items-center">
@@ -53,13 +41,13 @@ const SidebarItem = memo(({ item, isActive }: { item: MenuItemProps; isActive: b
         <span className="text-sm">{label}</span>
       </div>
 
-      {/* Badge Logic (Số thông báo bên phải) */}
+      {/* Badge Logic */}
       {badge && (
         <span
           className={`px-2 py-0.5 text-[10px] font-bold rounded-md min-w-[20px] text-center ${
             isActive
-              ? 'bg-red-600 text-white' // Active: Badge đỏ đậm, chữ trắng
-              : 'bg-red-100 text-red-600 group-hover:bg-red-200' // Inactive: Badge hồng nhạt
+              ? 'bg-red-600 text-white'
+              : 'bg-red-100 text-red-600 group-hover:bg-red-200'
           }`}
         >
           {badge}
@@ -71,40 +59,29 @@ const SidebarItem = memo(({ item, isActive }: { item: MenuItemProps; isActive: b
 
 SidebarItem.displayName = 'SidebarItem';
 
-// 2. Component chính: Sidebar
-export default function AdminSidebarNav() {
+export default function AccountantSidebar() {
   const currentPath = usePathname();
 
-  // Mock data User (Thay thế bằng logic lấy từ API/AuthService của bạn sau này)
   const userInfo = {
-    fullName: 'ADMIN',
-    email: 'admin@batdongscam.vn',
-    avatarUrl: null, // Để null sẽ hiện placeholder
-    role: 'Quản trị viên',
+    fullName: 'ACCOUNTANT',
+    email: 'finance@batdongscam.vn',
+    avatarUrl: 'https://i.pravatar.cc/150?u=accountant', 
+    role: 'Kế toán',
   };
 
-  // Danh sách menu - Cấu hình icon và link tại đây
-  // Note: Badge là số cứng demo, bạn có thể truyền biến dynamic vào đây sau
   const menuItems: MenuItemProps[] = useMemo(() => [
-    { href: '/admin/dashboard', icon: LayoutDashboard, label: 'Overview', badge: 12 },
-    { href: '/admin/properties', icon: Building, label: 'Properties', badge: 5 },
-    { href: '/admin/locations', icon: MapPin, label: 'Locations' },
-    { href: '/admin/agents', icon: Users, label: 'Agents', badge: 12 },
-    { href: '/admin/appointments', icon: Calendar, label: 'Appointments', badge: 99 },
-    { href: '/admin/customers', icon: UserCircle, label: 'Customers & Owners', badge: 2 },
-    { href: '/admin/contracts', icon: FileText, label: 'Contracts' },
-    { href: '/admin/payments', icon: Wallet, label: 'Payments' },
-    { href: '/admin/violations', icon: MessageSquareWarning, label: 'Violations' },
-    { href: '/admin/reports', icon: BarChart3, label: 'Statistic Reports' },
-    { href: '/admin/notifications', icon: Bell, label: 'Notifications', badge: '99+' },
+    { href: '/accountant/agents', icon: Users, label: 'Agents', badge: 12 },
+    { href: '/accountant/payments', icon: CreditCard, label: 'Payments' },
   ], []);
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200 w-64">
+    <div className="flex flex-col h-full bg-white border-r border-gray-200 w-64 fixed left-0 top-0 z-50">
+      
       {/* --- HEADER LOGO --- */}
       <div className="h-20 flex items-center px-6 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-red-600 rounded-tl-lg rounded-br-lg flex items-center justify-center shadow-sm">
+          {/* Logo */}
+          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center shadow-sm">
              <Triangle className="text-white fill-white w-5 h-5" />
           </div>
           <div className="flex flex-col">
@@ -112,7 +89,7 @@ export default function AdminSidebarNav() {
               BATDONGSCAM
             </h1>
             <span className="text-[10px] text-gray-400 font-medium tracking-wider">
-              ADMIN DASHBOARD
+              ACCOUNTANT
             </span>
           </div>
         </div>
@@ -124,7 +101,7 @@ export default function AdminSidebarNav() {
           <SidebarItem
             key={item.href}
             item={item}
-            isActive={currentPath === item.href}
+            isActive={currentPath.startsWith(item.href)} 
           />
         ))}
       </nav>
@@ -137,7 +114,7 @@ export default function AdminSidebarNav() {
                 {userInfo.avatarUrl ? (
                     <img src={userInfo.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
-                    <span className="text-xs font-bold text-gray-500">AD</span>
+                    <span className="text-xs font-bold text-gray-500">AC</span>
                 )}
             </div>
 
@@ -147,7 +124,7 @@ export default function AdminSidebarNav() {
                 <p className="text-[10px] text-gray-500 truncate">{userInfo.email}</p>
             </div>
 
-            {/* Actions (Logout/Setting) */}
+            {/* Actions */}
             <div className="flex flex-col gap-1">
                  <button className="text-gray-400 hover:text-red-500 transition-colors">
                     <LogOut className="w-4 h-4" />

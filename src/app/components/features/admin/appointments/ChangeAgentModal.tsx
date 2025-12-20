@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Search, RotateCcw } from 'lucide-react';
 import Modal from '@/app/components/ui/Modal';
 import Badge from '@/app/components/ui/Badge';
-import AgentsAdvancedSearch from '@/app/components/features/agents/AgentsAdvancedSearch'; 
+import AgentsAdvancedSearch from '@/app/components/features/admin/agents/AgentsAdvancedSearch'; 
 
 interface ChangeAgentModalProps {
   isOpen: boolean;

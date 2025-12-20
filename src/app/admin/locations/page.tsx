@@ -5,8 +5,8 @@ import { Search, Filter, MapPin } from 'lucide-react';
 import StatsGrid from '@/app/components/StatsGrid';
 import Modal from '@/app/components/ui/Modal';
 import LocationPicker from '@/app/components/LocationPicker';
-import LocationsTable from '@/app/components/features/locations/LocationsTable'; 
-import LocationAdvancedSearch from '@/app/components/features/locations/LocationAdvancedSearch';
+import LocationsTable from '@/app/components/features/admin/locations/LocationsTable'; 
+import LocationAdvancedSearch from '@/app/components/features/admin/locations/LocationAdvancedSearch';
 
 export default function LocationsPage() {
   const [isAdvSearchOpen, setIsAdvSearchOpen] = useState(false);

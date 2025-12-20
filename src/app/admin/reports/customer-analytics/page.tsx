@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { LogOut } from 'lucide-react';
-import AllTab from '@/app/components/features/reports/customer/AllTab';
-import MonthTab from '@/app/components/features/reports/customer/MonthTab';
+import AllTab from '@/app/components/features/admin/reports/customer/AllTab';
+import MonthTab from '@/app/components/features/admin/reports/customer/MonthTab';
 
 export default function CustomerAnalyticsReportPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'month'>('month');

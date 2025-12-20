@@ -3,10 +3,10 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import OverviewTab from '@/app/components/features/contracts/detail/OverviewTab';
-import PaymentDetailsTab from '@/app/components/features/contracts/detail/PaymentDetailsTab';
-import PartiesTab from '@/app/components/features/contracts/detail/PartiesTab';
-import TimelineTab from '@/app/components/features/contracts/detail/TimelineTab';
+import OverviewTab from '@/app/components/features/admin/contracts/detail/OverviewTab';
+import PaymentDetailsTab from '@/app/components/features/admin/contracts/detail/PaymentDetailsTab';
+import PartiesTab from '@/app/components/features/admin/contracts/detail/PartiesTab';
+import TimelineTab from '@/app/components/features/admin/contracts/detail/TimelineTab';
 
 export default function ContractDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'payment' | 'parties' | 'timeline'>('overview');

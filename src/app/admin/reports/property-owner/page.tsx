@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { LogOut } from 'lucide-react';
-import AllTab from '@/app/components/features/reports/property-owner/AllTab';
-import MonthTab from '@/app/components/features/reports/property-owner/MonthTab';
+import AllTab from '@/app/components/features/admin/reports/property-owner/AllTab';
+import MonthTab from '@/app/components/features/admin/reports/property-owner/MonthTab';
 
 export default function PropertyOwnerReportPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'month'>('month');

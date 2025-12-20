@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { LogOut } from 'lucide-react';
-import AllTab from '@/app/components/features/reports/agent-performance/AllTab';
-import MonthTab from '@/app/components/features/reports/agent-performance/MonthTab';
+import AllTab from '@/app/components/features/admin/reports/agent-performance/AllTab';
+import MonthTab from '@/app/components/features/admin/reports/agent-performance/MonthTab';
 
 export default function AgentPerformancePage() {
   const [activeTab, setActiveTab] = useState<'all' | 'month'>('month');

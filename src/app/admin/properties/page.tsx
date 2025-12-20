@@ -5,8 +5,8 @@ import { Search, Filter, Home, Layout, Building2, MapPin } from 'lucide-react';
 import StatsGrid from '@/app/components/StatsGrid';
 import Modal from '@/app/components/ui/Modal';
 import LocationPicker from '@/app/components/LocationPicker';
-import PropertiesTable from '@/app/components/features/properties/PropertiesTable'; 
-import AdvancedSearchForm from '@/app/components/features/properties/AdvancedSearchForm';
+import PropertiesTable from '@/app/components/features/admin/properties/PropertiesTable'; 
+import AdvancedSearchForm from '@/app/components/features/admin/properties/AdvancedSearchForm';
 
 export default function PropertiesPage() {
   const [isAdvSearchOpen, setIsAdvSearchOpen] = useState(false);

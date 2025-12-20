@@ -7,8 +7,8 @@ import Modal from '@/app/components/ui/Modal';
 import LocationPicker from '@/app/components/LocationPicker';
 
 // Components
-import AgentsTable from '@/app/components/features/agents/AgentsTable';
-import AgentsAdvancedSearch from '@/app/components/features/agents/AgentsAdvancedSearch';
+import AgentsTable from '@/app/components/features/admin/agents/AgentsTable';
+import AgentsAdvancedSearch from '@/app/components/features/admin/agents/AgentsAdvancedSearch';
 
 export default function AgentsPage() {
   const [isAdvSearchOpen, setIsAdvSearchOpen] = useState(false);

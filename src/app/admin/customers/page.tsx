@@ -5,10 +5,10 @@ import { Search, Filter, ChevronDown, Award, TrendingUp, Users, Smile } from 'lu
 import StatsGrid from '@/app/components/StatsGrid';
 import Modal from '@/app/components/ui/Modal';
 import LocationPicker from '@/app/components/LocationPicker';
-import CustomersTable from '@/app/components/features/customers/CustomersTable';
-import OwnersTable from '@/app/components/features/customers/OwnersTable';
-import CustomersAdvancedSearch from '@/app/components/features/customers/CustomersAdvancedSearch';
-import OwnersAdvancedSearch from '@/app/components/features/customers/OwnersAdvancedSearch';
+import CustomersTable from '@/app/components/features/admin/customers/CustomersTable';
+import OwnersTable from '@/app/components/features/admin/customers/OwnersTable';
+import CustomersAdvancedSearch from '@/app/components/features/admin/customers/CustomersAdvancedSearch';
+import OwnersAdvancedSearch from '@/app/components/features/admin/customers/OwnersAdvancedSearch';
 
 export default function CustomersPage() {
   const [activeTab, setActiveTab] = useState<'customers' | 'owners'>('customers');
