@@ -23,6 +23,9 @@ interface Assignment {
   assignedAt: string;
   deadline: string;
   commission: string;
+  totalArea?: number;
+  numberOfImages?: number;
+  ownerTier?: string;
 }
 
 // Removed mock data - using real API
@@ -50,21 +53,47 @@ export default function AssignmentsPage() {
     setIsLoading(true);
     try {
       const response = await assignmentService.getMyAssignedProperties();
-      // Map API response to component interface - response is paginated
+      
+      // Helper function for image URLs
+      const getImageUrl = (path?: string) => {
+        if (!path) {
+          const placeholders = [
+            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
+            'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
+            'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
+          ];
+          return placeholders[Math.floor(Math.random() * placeholders.length)];
+        }
+        if (path.startsWith('http')) return path;
+        // Fallback for relative paths
+        const placeholders = [
+          'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
+          'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
+          'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
+        ];
+        const hash = path.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return placeholders[hash % placeholders.length];
+      };
+      
+      // Map API response to component interface
       const mappedData: Assignment[] = (response.data || []).map((item: any) => ({
         id: item.id,
-        propertyId: item.propertyId || item.id,
+        propertyId: item.id,
         propertyName: item.title || 'Untitled Property',
-        propertyImage: item.imageUrl || '',
-        propertyAddress: item.address || '',
+        propertyImage: getImageUrl(item.thumbnailUrl),
+        propertyAddress: item.location || 'Location not available',
         propertyPrice: item.price ? `$${item.price.toLocaleString()}` : 'N/A',
         propertyType: item.transactionType === 'SALE' ? 'Sale' : 'Rent',
-        ownerName: item.ownerName || 'Unknown',
-        ownerPhone: item.ownerPhone || '',
-        status: 'In Progress', // Default status since API doesn't provide assignment status
-        assignedAt: item.assignedAt || new Date().toISOString().split('T')[0],
-        deadline: item.deadline || '',
-        commission: item.commissionRate ? `${item.commissionRate}%` : 'N/A'
+        ownerName: `${item.ownerFirstName || ''} ${item.ownerLastName || ''}`.trim() || 'Unknown',
+        ownerPhone: item.ownerPhone || 'N/A',
+        ownerTier: item.ownerTier || 'BRONZE',
+        status: item.status === 'AVAILABLE' ? 'In Progress' : 
+                item.status === 'PENDING' ? 'Pending' : 'In Progress',
+        assignedAt: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
+        deadline: item.deadline || 'No deadline',
+        commission: 'N/A', // API doesn't provide commission
+        totalArea: item.totalArea,
+        numberOfImages: item.numberOfImages
       }));
       setAssignments(mappedData);
     } catch (error) {
@@ -188,8 +217,10 @@ export default function AssignmentsPage() {
                     <p className="text-sm font-bold text-red-600 mt-1">{assignment.propertyPrice}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Commission</p>
-                    <p className="text-sm font-medium text-green-600 mt-1">{assignment.commission}</p>
+                    <p className="text-xs text-gray-500">Area</p>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {assignment.totalArea ? `${assignment.totalArea} m²` : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Owner</p>
@@ -199,10 +230,9 @@ export default function AssignmentsPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Deadline</p>
-                    <p className="text-sm font-medium text-gray-900 mt-1 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-gray-400" />
-                      {assignment.deadline}
+                    <p className="text-xs text-gray-500">Images</p>
+                    <p className="text-sm font-medium text-gray-900 mt-1">
+                      {assignment.numberOfImages || 0} photos
                     </p>
                   </div>
                 </div>
@@ -293,8 +323,22 @@ export default function AssignmentsPage() {
                 </Badge>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500">Commission</p>
-                <p className="font-bold text-green-600">{selectedAssignment.commission}</p>
+                <p className="text-xs text-gray-500">Transaction Type</p>
+                <Badge variant={selectedAssignment.propertyType === 'Sale' ? 'sale' : 'rental'} className="mt-1">
+                  For {selectedAssignment.propertyType}
+                </Badge>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">Area</p>
+                <p className="font-medium text-gray-900">
+                  {selectedAssignment.totalArea ? `${selectedAssignment.totalArea} m²` : 'N/A'}
+                </p>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">Images</p>
+                <p className="font-medium text-gray-900">
+                  {selectedAssignment.numberOfImages || 0} photos
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500">Assigned Date</p>
@@ -309,8 +353,17 @@ export default function AssignmentsPage() {
             {/* Owner Info */}
             <div className="p-4 border rounded-lg">
               <p className="text-xs text-gray-500 mb-2">Property Owner</p>
-              <p className="font-medium text-gray-900">{selectedAssignment.ownerName}</p>
-              <p className="text-sm text-gray-500 mt-1">{selectedAssignment.ownerPhone}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-900">{selectedAssignment.ownerName}</p>
+                  <p className="text-sm text-gray-500 mt-1">{selectedAssignment.ownerPhone}</p>
+                </div>
+                {selectedAssignment.ownerTier && (
+                  <Badge variant="info" className="text-xs">
+                    {selectedAssignment.ownerTier}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </Modal>

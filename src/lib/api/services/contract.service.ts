@@ -2,13 +2,13 @@ import apiClient from '../client';
 import { SingleResponse, ListResponse } from '../types';
 
 const CONTRACT_ENDPOINTS = {
-  MY_CONTRACTS: '/contracts/my',
-  AGENT_CONTRACTS: '/contracts/agent/my',
-  CONTRACT_DETAILS: '/contracts',
-  CREATE: '/contracts',
-  SIGN: '/contracts',
-  CANCEL: '/contracts',
-  RATE: '/contracts',
+  MY_CONTRACTS: '/contract/my-contracts',
+  AGENT_CONTRACTS: '/contract/my-agent-contracts',
+  CONTRACT_DETAILS: '/contract',
+  CREATE: '/contract',
+  SIGN: '/contract',
+  CANCEL: '/contract',
+  RATE: '/contract',
 };
 
 export interface Contract {

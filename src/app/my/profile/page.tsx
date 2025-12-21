@@ -167,17 +167,17 @@ export default function CustomerProfilePage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{user.profile?.totalBought || 0}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalSolds || 0}</span>
                   <span className="text-red-200 text-base">Bought</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{user.profile?.totalRented || 0}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalRentals || 0}</span>
                   <span className="text-red-200 text-base">Rented</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-white" />
-                  <span className="font-semibold text-white text-base">{user.profile?.totalInvested || 0}</span>
+                  <span className="font-semibold text-white text-base">{user.profile?.totalProjects || 0}</span>
                   <span className="text-red-200 text-base">Invested</span>
                 </div>
               </div>
@@ -292,24 +292,51 @@ export default function CustomerProfilePage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Properties Statistic Infomation</h2>
         
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Total transactions</p>
-              <p className="text-2xl font-bold text-gray-900">{(user.profile?.totalBought || 0) + (user.profile?.totalRented || 0)}</p>
+          {user.role === 'PROPERTY_OWNER' ? (
+            // Owner Statistics - Show property listings
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Total Properties</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticAll?.totalProperties || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">For Sale</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticMonth?.monthTotalForSales || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">For Rent</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticMonth?.monthTotalForRents || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Sold/Rented</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(user.statisticAll?.totalPropertiesSold || 0) + (user.statisticAll?.totalPropertiesRented || 0)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Bought</p>
-              <p className="text-2xl font-bold text-gray-900">{user.profile?.totalBought || 0}</p>
+          ) : (
+            // Customer Statistics - Show transactions
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Total transactions</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {(user.statisticAll?.totalPurchases || 0) + (user.statisticAll?.totalRentals || 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Bought</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticAll?.totalPurchases || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Rented</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticAll?.totalRentals || 0}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Renting</p>
+                <p className="text-2xl font-bold text-gray-900">{user.statisticMonth?.monthRentals || 0}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Rented</p>
-              <p className="text-2xl font-bold text-gray-900">{user.profile?.totalRented || 0}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Renting</p>
-              <p className="text-2xl font-bold text-gray-900">{user.statisticAll?.totalRentals || 0}</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -321,80 +348,148 @@ export default function CustomerProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Customer tier */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Customer tier</p>
-              <p className="font-bold text-gray-900">{user.tier || 'MEMBER'}</p>
+              <p className="text-sm text-gray-500 mb-1">{user.role === 'PROPERTY_OWNER' ? 'Owner tier' : 'Customer tier'}</p>
+              <p className="font-bold text-gray-900">{user.tier || user.statisticMonth?.contributionTier || 'BRONZE'}</p>
             </div>
             
             {/* Total transactions */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Total transactions</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.monthContractsSigned || 0}</p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER' 
+                  ? (user.statisticAll?.totalProperties || 0)
+                  : (user.statisticAll?.totalPurchases || 0) + (user.statisticAll?.totalRentals || 0)
+                }
+              </p>
             </div>
 
-            {/* Total spending */}
+            {/* Total spending / Total Properties */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Total spending</p>
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-gray-900">${(user.statisticAll?.spending || 0).toLocaleString()}</p>
-                <DollarSign className="w-4 h-4 text-gray-400" />
-              </div>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Total properties listed' : 'Total spending'}
+              </p>
+              {user.role === 'PROPERTY_OWNER' ? (
+                <p className="font-bold text-gray-900">{user.statisticAll?.totalProperties || 0}</p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-900">
+                    ${(user.statisticAll?.spending || 0).toLocaleString()}
+                  </p>
+                  <DollarSign className="w-4 h-4 text-gray-400" />
+                </div>
+              )}
             </div>
             
-            {/* Current month spending */}
+            {/* Current month spending / Month Properties */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Current month spending</p>
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-gray-900">${(user.statisticMonth?.monthSpending || 0).toLocaleString()}</p>
-                <DollarSign className="w-4 h-4 text-gray-400" />
-              </div>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Month properties listed' : 'Current month spending'}
+              </p>
+              {user.role === 'PROPERTY_OWNER' ? (
+                <p className="font-bold text-gray-900">{user.statisticMonth?.monthTotalProperties || 0}</p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-gray-900">
+                    ${(user.statisticMonth?.monthSpending || 0).toLocaleString()}
+                  </p>
+                  <DollarSign className="w-4 h-4 text-gray-400" />
+                </div>
+              )}
             </div>
 
-            {/* Total purchases */}
+            {/* Total purchases / Total Sold */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Total purchases</p>
-              <p className="font-bold text-gray-900">{user.statisticAll?.totalPurchases || 0}</p>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Total properties sold' : 'Total purchases'}
+              </p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER'
+                  ? (user.statisticAll?.totalPropertiesSold || 0)
+                  : (user.statisticAll?.totalPurchases || 0)
+                }
+              </p>
             </div>
             
-            {/* Current month purchases */}
+            {/* Current month purchases / Month Sold */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Current month purchases</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.monthPurchases || 0}</p>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Month properties sold' : 'Current month purchases'}
+              </p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER' 
+                  ? (user.statisticMonth?.monthTotalPropertiesSold || 0)
+                  : (user.statisticMonth?.monthPurchases || 0)
+                }
+              </p>
             </div>
 
-            {/* Total rentals */}
+            {/* Total rentals / Total Rented */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Total rentals</p>
-              <p className="font-bold text-gray-900">{user.statisticAll?.totalRentals || 0}</p>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Total properties rented' : 'Total rentals'}
+              </p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER'
+                  ? (user.statisticAll?.totalPropertiesRented || 0)
+                  : (user.statisticAll?.totalRentals || 0)
+                }
+              </p>
             </div>
             
-            {/* Current month rentals */}
+            {/* Current month rentals / Month Rented */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Current month rentals</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.monthRentals || 0}</p>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Month properties rented' : 'Current month rentals'}
+              </p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER'
+                  ? (user.statisticMonth?.monthTotalPropertiesRented || 0)
+                  : (user.statisticMonth?.monthRentals || 0)
+                }
+              </p>
             </div>
 
-            {/* Viewings Requested */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Viewings Requested</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.monthViewingsRequested || 0}</p>
-            </div>
-            
-            {/* Viewings Attended */}
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Viewings Attended</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.monthViewingAttended || 0}</p>
-            </div>
+            {/* Viewings - Only for Customer */}
+            {user.role === 'CUSTOMER' && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Viewings Requested</p>
+                  <p className="font-bold text-gray-900">{user.statisticAll?.viewingsRequested || 0}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Viewings Attended</p>
+                  <p className="font-bold text-gray-900">{user.statisticAll?.viewingsAttended || 0}</p>
+                </div>
+              </>
+            )}
 
             {/* Lead Score */}
             <div>
-              <p className="text-sm text-gray-500 mb-1">Lead Score</p>
-              <p className="font-bold text-gray-900">{user.statisticMonth?.leadScore || 0}</p>
+              <p className="text-sm text-gray-500 mb-1">
+                {user.role === 'PROPERTY_OWNER' ? 'Contribution Points' : 'Lead Score'}
+              </p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER'
+                  ? (user.statisticAll?.contributionPoint || user.statisticMonth?.contributionPoint || 0)
+                  : (user.statisticAll?.leadScore || user.statisticMonth?.leadScore || 0)
+                }
+              </p>
             </div>
             
             {/* Ranking Position */}
             <div>
               <p className="text-sm text-gray-500 mb-1">Ranking Position</p>
-              <p className="font-bold text-gray-900">#{user.statisticMonth?.leadPosition || 'N/A'}</p>
+              <p className="font-bold text-gray-900">
+                {user.role === 'PROPERTY_OWNER'
+                  ? (user.statisticAll?.rankingPosition || user.statisticMonth?.rankingPosition 
+                      ? `#${user.statisticAll?.rankingPosition || user.statisticMonth?.rankingPosition}` 
+                      : '#N/A')
+                  : (user.statisticAll?.leadPosition || user.statisticMonth?.leadPosition
+                      ? `#${user.statisticAll?.leadPosition || user.statisticMonth?.leadPosition}`
+                      : '#N/A')
+                }
+              </p>
             </div>
           </div>
         </div>

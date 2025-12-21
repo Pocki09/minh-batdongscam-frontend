@@ -1,10 +1,9 @@
 import apiClient from '../client';
-import { SingleResponse, ListResponse } from '../types';
+import { SingleResponse, PaginatedResponse } from '../types';
 
 const LOCATION_ENDPOINTS = {
-  CITIES: '/public/location/cities',
-  DISTRICTS: '/public/location/districts',
-  WARDS: '/public/location/wards',
+  CHILDREN: '/public/locations/children',
+  PROPERTY_TYPES: '/public/locations/property-types',
 };
 
 export interface City {
@@ -30,31 +29,50 @@ export interface Ward {
   districtId: string;
 }
 
+export interface PropertyType {
+  id: string;
+  name: string;
+  description?: string;
+  iconUrl?: string;
+}
+
 export const locationService = {
   /**
    * Get all cities
    */
-  async getCities(): Promise<City[]> {
-    const response = await apiClient.get<ListResponse<City>>(LOCATION_ENDPOINTS.CITIES);
-    return response.data.data;
+  async getCities(): Promise<Map<string, string>> {
+    const response = await apiClient.get<SingleResponse<Record<string, string>>>(
+      `${LOCATION_ENDPOINTS.CHILDREN}?searchType=CITY`
+    );
+    return new Map(Object.entries(response.data.data));
   },
 
   /**
    * Get districts by city ID
    */
-  async getDistricts(cityId: string): Promise<District[]> {
-    const response = await apiClient.get<ListResponse<District>>(
-      `${LOCATION_ENDPOINTS.DISTRICTS}?cityId=${cityId}`
+  async getDistricts(cityId: string): Promise<Map<string, string>> {
+    const response = await apiClient.get<SingleResponse<Record<string, string>>>(
+      `${LOCATION_ENDPOINTS.CHILDREN}?searchType=DISTRICT&parentId=${cityId}`
     );
-    return response.data.data;
+    return new Map(Object.entries(response.data.data));
   },
 
   /**
    * Get wards by district ID
    */
-  async getWards(districtId: string): Promise<Ward[]> {
-    const response = await apiClient.get<ListResponse<Ward>>(
-      `${LOCATION_ENDPOINTS.WARDS}?districtId=${districtId}`
+  async getWards(districtId: string): Promise<Map<string, string>> {
+    const response = await apiClient.get<SingleResponse<Record<string, string>>>(
+      `${LOCATION_ENDPOINTS.CHILDREN}?searchType=WARD&parentId=${districtId}`
+    );
+    return new Map(Object.entries(response.data.data));
+  },
+
+  /**
+   * Get all property types
+   */
+  async getPropertyTypes(): Promise<PropertyType[]> {
+    const response = await apiClient.get<PaginatedResponse<PropertyType>>(
+      `${LOCATION_ENDPOINTS.PROPERTY_TYPES}?page=1&limit=100`
     );
     return response.data.data;
   },

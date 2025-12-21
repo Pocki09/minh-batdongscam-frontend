@@ -50,15 +50,15 @@ const roleMenuItems: Record<UserRole, MenuItem[]> = {
   PROPERTY_OWNER: [
     { href: '/owner/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/my/properties', label: 'My Properties', icon: Building },
+    { href: '/my/profile', label: 'My Profile', icon: User },
     { href: '/my/contracts', label: 'Contracts', icon: FileText },
     { href: '/my/payments', label: 'Payments', icon: Wallet },
     { href: '/my/reports', label: 'Reports', icon: AlertTriangle },
   ],
   SALESAGENT: [
     { href: '/agent/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/my/properties', label: 'Assigned Properties', icon: Building },
     { href: '/agent/assignments', label: 'Assignments', icon: Briefcase },
-    { href: '/my/appointments', label: 'Appointments', icon: Calendar },
+    { href: '/agent/appointments', label: 'Appointments', icon: Calendar },
     { href: '/agent/customers', label: 'Customers', icon: Users },
     { href: '/my/contracts', label: 'Contracts', icon: FileText },
   ],

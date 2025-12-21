@@ -24,7 +24,7 @@ export interface CreatePropertyRequest {
   floors?: number;
   rooms?: number;
   orientation?: string;
-  amenities?: string[];
+  amenities?: string;
   yearBuilt?: number;
   documents?: any[];
 }
@@ -94,22 +94,81 @@ export const propertyService = {
 
   /**
    * Create new property (Owner only)
+   * Supports multipart/form-data with images and documents
    */
-  async createProperty(data: CreatePropertyRequest): Promise<PropertyDetails> {
+  async createProperty(
+    data: CreatePropertyRequest,
+    images?: File[],
+    documents?: File[]
+  ): Promise<PropertyDetails> {
+    const formData = new FormData();
+    
+    // Add JSON payload as a blob
+    formData.append('payload', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    
+    // Add images if provided
+    if (images && images.length > 0) {
+      images.forEach(image => {
+        formData.append('images', image);
+      });
+    }
+    
+    // Add documents if provided
+    if (documents && documents.length > 0) {
+      documents.forEach(doc => {
+        formData.append('documents', doc);
+      });
+    }
+    
     const response = await apiClient.post<SingleResponse<PropertyDetails>>(
       PROPERTY_ENDPOINTS.CREATE,
-      data
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return response.data.data;
   },
 
   /**
    * Update property (Owner only)
+   * Supports multipart/form-data with images and documents
    */
-  async updateProperty(id: string, data: Partial<CreatePropertyRequest>): Promise<PropertyDetails> {
+  async updateProperty(
+    id: string,
+    data: Partial<CreatePropertyRequest>,
+    images?: File[],
+    documents?: File[]
+  ): Promise<PropertyDetails> {
+    const formData = new FormData();
+    
+    // Add JSON payload as a blob
+    formData.append('payload', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    
+    // Add images if provided
+    if (images && images.length > 0) {
+      images.forEach(image => {
+        formData.append('images', image);
+      });
+    }
+    
+    // Add documents if provided
+    if (documents && documents.length > 0) {
+      documents.forEach(doc => {
+        formData.append('documents', doc);
+      });
+    }
+    
     const response = await apiClient.put<SingleResponse<PropertyDetails>>(
       PROPERTY_ENDPOINTS.UPDATE(id),
-      data
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
     );
     return response.data.data;
   },
