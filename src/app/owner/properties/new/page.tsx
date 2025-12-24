@@ -22,8 +22,12 @@ interface PropertyForm {
   wardId: string;
   bedrooms: number;
   bathrooms: number;
+  rooms?: number;
+  floors?: number;
   area: string;
   yearBuilt: string;
+  houseOrientation?: string;
+  balconyOrientation?: string;
   features: string[];
   images: File[];
   documents: File[];
@@ -206,6 +210,10 @@ export default function CreatePropertyPage() {
         priceAmount: parseFloat(formData.price.replace(/,/g, '')),
         bedrooms: formData.bedrooms || undefined,
         bathrooms: formData.bathrooms || undefined,
+        rooms: formData.rooms,
+        floors: formData.floors,
+        houseOrientation: formData.houseOrientation as any,
+        balconyOrientation: formData.balconyOrientation as any,
         yearBuilt: formData.yearBuilt ? parseInt(formData.yearBuilt) : undefined,
         amenities: formData.features.join(', '),
         propertyTypeId: formData.propertyTypeId,
@@ -228,7 +236,24 @@ export default function CreatePropertyPage() {
     }
   };
 
-  const nextStep = () => setStep(step + 1);
+  const nextStep = () => {
+    // Validation for Step 1
+    if (step === 1) {
+      if (!formData.title || !formData.description || !formData.type || 
+          !formData.propertyTypeId || !formData.price) {
+        alert('Please fill in all required fields');
+        return;
+      }
+    }
+    // Validation for Step 2
+    if (step === 2) {
+      if (!formData.area || !formData.address || !formData.wardId) {
+        alert('Please fill in all required fields including address and location');
+        return;
+      }
+    }
+    setStep(step + 1);
+  };
   const prevStep = () => setStep(step - 1);
 
   return (
@@ -317,7 +342,7 @@ export default function CreatePropertyPage() {
                 <option value="">Select property type</option>
                 {propertyTypes.map((type) => (
                   <option key={type.id} value={type.id}>
-                    {type.name}
+                    {type.typeName}
                   </option>
                 ))}
               </select>
@@ -350,15 +375,26 @@ export default function CreatePropertyPage() {
             </div>
 
             {/* Price */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${formData.type === 'Rent' ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Price</label>
                 <div className="relative">
                   <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    inputMode="numeric"
+                    value={formData.price ? Number(formData.price).toLocaleString() : ''}
+                    onChange={(e) => {
+                      // Remove all non-digit characters
+                      const value = e.target.value.replace(/\D/g, '');
+                      setFormData({ ...formData, price: value });
+                    }}
+                    onKeyPress={(e) => {
+                      // Only allow digits
+                      if (!/[0-9]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="850,000"
                     className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                     required
@@ -366,35 +402,39 @@ export default function CreatePropertyPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {formData.type === 'Rent' ? 'Per' : 'Currency'}
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
                 <select
                   value={formData.priceUnit}
                   onChange={(e) => setFormData({ ...formData, priceUnit: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                 >
-                  {formData.type === 'Rent' ? (
-                    <>
-                      <option value="month">/month</option>
-                      <option value="week">/week</option>
-                      <option value="year">/year</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="USD">USD</option>
-                      <option value="VND">VND</option>
-                    </>
-                  )}
+                  <option value="USD">USD</option>
+                  <option value="VND">VND</option>
                 </select>
               </div>
+              {formData.type === 'Rent' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Per</label>
+                  <select
+                    value={formData.rentPeriod || 'month'}
+                    onChange={(e) => setFormData({ ...formData, rentPeriod: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                  >
+                    <option value="month">/month</option>
+                    <option value="week">/week</option>
+                    <option value="year">/year</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={nextStep}
-                className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium"
+                disabled={!formData.title || !formData.description || !formData.type || 
+                         !formData.propertyTypeId || !formData.price}
+                className="px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Continue
               </button>
@@ -531,6 +571,68 @@ export default function CreatePropertyPage() {
                   placeholder="2020"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
                 />
+              </div>
+            </div>
+
+            {/* Additional Details */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Rooms</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.rooms || ''}
+                  onChange={(e) => setFormData({ ...formData, rooms: parseInt(e.target.value) || undefined })}
+                  placeholder="Total rooms"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Floors</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.floors || ''}
+                  onChange={(e) => setFormData({ ...formData, floors: parseInt(e.target.value) || undefined })}
+                  placeholder="Number of floors"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">House Orientation</label>
+                <select
+                  value={formData.houseOrientation || ''}
+                  onChange={(e) => setFormData({ ...formData, houseOrientation: e.target.value || undefined })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-gray-900"
+                >
+                  <option value="">Select orientation</option>
+                  <option value="NORTH">North</option>
+                  <option value="SOUTH">South</option>
+                  <option value="EAST">East</option>
+                  <option value="WEST">West</option>
+                  <option value="NORTHEAST">Northeast</option>
+                  <option value="NORTHWEST">Northwest</option>
+                  <option value="SOUTHEAST">Southeast</option>
+                  <option value="SOUTHWEST">Southwest</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Balcony Orientation</label>
+                <select
+                  value={formData.balconyOrientation || ''}
+                  onChange={(e) => setFormData({ ...formData, balconyOrientation: e.target.value || undefined })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-gray-900"
+                >
+                  <option value="">Select orientation</option>
+                  <option value="NORTH">North</option>
+                  <option value="SOUTH">South</option>
+                  <option value="EAST">East</option>
+                  <option value="WEST">West</option>
+                  <option value="NORTHEAST">Northeast</option>
+                  <option value="NORTHWEST">Northwest</option>
+                  <option value="SOUTHEAST">Southeast</option>
+                  <option value="SOUTHWEST">Southwest</option>
+                </select>
               </div>
             </div>
 

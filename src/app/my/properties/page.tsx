@@ -1,21 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Building, Plus, Search, Eye, Edit, Trash2, Grid, List } from 'lucide-react';
-import PropertyCard from '@/app/components/ui/PropertyCard';
+import React, { useState, useEffect } from 'react';
+import { Building, Plus, Search, Eye, Edit, Trash2, MapPin, Bed, Bath, Square, Grid, List, Loader2 } from 'lucide-react';
 import Badge from '@/app/components/ui/Badge';
 import Modal from '@/app/components/ui/Modal';
 import Link from 'next/link';
+import { propertyService } from '@/lib/api/services/property.service';
+import { accountService } from '@/lib/api/services/account.service';
 
 type PropertyStatus = 'Active' | 'Pending' | 'Rented' | 'Sold' | 'Inactive';
 type PropertyType = 'Sale' | 'Rent';
 
 interface Property {
-  id: number;
+  id: string;
   title: string;
   image: string;
-  location: string;
-  city?: string;
+  address: string;
   price: string;
   type: PropertyType;
   status: PropertyStatus;
@@ -27,89 +27,6 @@ interface Property {
   createdAt: string;
 }
 
-// Mock data
-const mockProperties: Property[] = [
-  {
-    id: 1,
-    title: 'Modern Villa with Pool',
-    image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-    location: 'District 7',
-    city: 'Ho Chi Minh City',
-    price: '$850,000',
-    type: 'Sale',
-    status: 'Active',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: '280 m²',
-    views: 125,
-    inquiries: 8,
-    createdAt: '2024-01-10',
-  },
-  {
-    id: 2,
-    title: 'Luxury Apartment Downtown',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=400',
-    location: 'District 1',
-    city: 'Ho Chi Minh City',
-    price: '$1,200/month',
-    type: 'Rent',
-    status: 'Rented',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: '120 m²',
-    views: 89,
-    inquiries: 5,
-    createdAt: '2024-01-05',
-  },
-  {
-    id: 3,
-    title: 'Family House with Garden',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400',
-    location: 'Thu Duc City',
-    city: 'Ho Chi Minh',
-    price: '$650,000',
-    type: 'Sale',
-    status: 'Active',
-    bedrooms: 5,
-    bathrooms: 4,
-    area: '350 m²',
-    views: 67,
-    inquiries: 3,
-    createdAt: '2024-01-15',
-  },
-  {
-    id: 4,
-    title: 'Cozy Studio Near Park',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400',
-    location: 'Binh Thanh District',
-    price: '$450/month',
-    type: 'Rent',
-    status: 'Active',
-    bedrooms: 1,
-    bathrooms: 1,
-    area: '45 m²',
-    views: 45,
-    inquiries: 2,
-    createdAt: '2024-01-18',
-  },
-  {
-    id: 5,
-    title: 'Penthouse with City View',
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=400',
-    location: 'District 3',
-    city: 'Ho Chi Minh City',
-    price: '$2,500,000',
-    type: 'Sale',
-    status: 'Pending',
-    bedrooms: 3,
-    bathrooms: 3,
-    area: '200 m²',
-    views: 234,
-    inquiries: 15,
-    createdAt: '2024-01-12',
-  },
-];
-
 const statusVariants: Record<PropertyStatus, 'success' | 'warning' | 'info' | 'danger' | 'default'> = {
   Active: 'success',
   Pending: 'warning',
@@ -119,16 +36,77 @@ const statusVariants: Record<PropertyStatus, 'success' | 'warning' | 'info' | 'd
 };
 
 export default function MyPropertiesPage() {
-  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'Sale' | 'Rent'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | PropertyStatus>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [deleteModal, setDeleteModal] = useState<Property | null>(null);
 
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    setIsLoading(true);
+    try {
+      const user = await accountService.getMe();
+      
+      // Determine filter based on role
+      const filters: any = {
+        page: 1,
+        limit: 100
+      };
+
+      if (user.role === 'PROPERTY_OWNER') {
+        filters.ownerId = user.id;
+      } else if (user.role === 'SALES_AGENT') {
+        filters.agentId = user.id;
+      }
+
+      const response = await propertyService.getPropertyCards(filters);
+      
+      const mappedData: Property[] = (response.data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title || 'Untitled',
+        image: item.thumbnailUrl || '',
+        address: item.location || '',
+        price: item.price ? `$${item.price.toLocaleString()}` : 'N/A',
+        type: item.transactionType === 'SALE' ? 'Sale' : item.transactionType === 'RENTAL' ? 'Rent' : 'Sale',
+        status: mapStatus(item.status),
+        bedrooms: 0, // Not available in card response
+        bathrooms: 0, // Not available in card response
+        area: item.totalArea ? `${item.totalArea} m²` : 'N/A',
+        views: 0, // Not available in card response
+        inquiries: 0, // Not available in card response
+        createdAt: item.createdAt || ''
+      }));
+      setProperties(mappedData);
+    } catch (error) {
+      console.error('Failed to load properties:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const mapStatus = (apiStatus: string): PropertyStatus => {
+    switch (apiStatus) {
+      case 'AVAILABLE': return 'Active';
+      case 'PENDING': return 'Pending';
+      case 'RENTED': return 'Rented';
+      case 'SOLD': return 'Sold';
+      case 'REJECTED':
+      case 'REMOVED':
+      case 'DELETED':
+        return 'Inactive';
+      default: return 'Active';
+    }
+  };
+
   const filteredProperties = properties.filter(p => {
     const matchesSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.location.toLowerCase().includes(searchTerm.toLowerCase());
+                          p.address.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filter === 'all' || p.type === filter;
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
@@ -138,12 +116,26 @@ export default function MyPropertiesPage() {
     setDeleteModal(property);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteModal) {
-      setProperties(properties.filter(p => p.id !== deleteModal.id));
-      setDeleteModal(null);
+      try {
+        await propertyService.deleteProperty(deleteModal.id);
+        setProperties(properties.filter(p => p.id !== deleteModal.id));
+        setDeleteModal(null);
+      } catch (error) {
+        console.error('Failed to delete property:', error);
+        alert('Failed to delete property. Please try again.');
+      }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -159,7 +151,7 @@ export default function MyPropertiesPage() {
           </p>
         </div>
         <Link
-          href="/owner/properties/new"
+          href="/my/properties/new"
           className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
         >
           <Plus className="w-4 h-4" />
@@ -176,7 +168,7 @@ export default function MyPropertiesPage() {
             placeholder="Search properties..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 bg-white"
           />
         </div>
         
@@ -213,7 +205,7 @@ export default function MyPropertiesPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-sm"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           >
             <option value="all">All Status</option>
             <option value="Active">Active</option>
@@ -245,63 +237,74 @@ export default function MyPropertiesPage() {
         </div>
       </div>
 
-      {/* Properties Grid - 4 per row */}
+      {/* Properties Grid/List */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProperties.map((property) => (
-            <div key={property.id} className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300">
-              {/* Property Card - without border */}
-              <PropertyCard
-                id={property.id}
-                title={property.title}
-                image={property.image}
-                price={property.price}
-                type={property.type}
-                location={property.location}
-                city={property.city}
-                bedrooms={property.bedrooms}
-                bathrooms={property.bathrooms}
-                area={property.area}
-                noBorder={true}
-              />
-              
-              {/* Status, Stats and Actions Row - with horizontal divider */}
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                {/* Left: Status + Stats */}
-                <div className="flex items-center gap-2">
-                  <Badge variant={statusVariants[property.status]}>
-                    {property.status}
-                  </Badge>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>{property.views} views</span>
-                    <span>·</span>
-                    <span>{property.inquiries} inquiries</span>
+            <div 
+              key={property.id}
+              className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden group relative"
+            >
+              <Link href={`/property/${property.id}`} className="block">
+                {/* Image */}
+                <div className="relative h-56 overflow-hidden">
+                  <img 
+                    src={property.image} 
+                    alt={property.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-3 left-3 flex gap-2">
+                    <Badge variant={property.type === 'Sale' ? 'sale' : 'rental'}>
+                      {property.type}
+                    </Badge>
+                    <Badge variant={statusVariants[property.status]}>
+                      {property.status}
+                    </Badge>
                   </div>
                 </div>
-                
-                {/* Right: Action Buttons */}
-                <div className="flex items-center gap-1">
+
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 truncate">{property.title}</h3>
+                  <p className="text-red-600 font-bold text-lg mt-1">{property.price}</p>
+                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-2">
+                    <MapPin className="w-3 h-3" />
+                    {property.address}
+                  </p>
+
+                  {/* Features */}
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Square className="w-4 h-4 text-gray-400" />
+                      {property.area}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+              
+              {/* Actions - Outside Link to prevent nested links */}
+              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div className="flex items-center gap-1 bg-white rounded-lg p-1 shadow-lg">
                   <Link
                     href={`/property/${property.id}`}
-                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    title="View"
+                    className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Eye className="w-4 h-4" />
                   </Link>
                   <Link
-                    href={`/owner/properties/${property.id}/edit`}
-                    className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                    title="Edit"
+                    href={`/my/properties/${property.id}/edit`}
+                    className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Edit className="w-4 h-4" />
                   </Link>
                   <button
                     onClick={(e) => {
-                      e.preventDefault();
+                      e.stopPropagation();
                       handleDelete(property);
                     }}
-                    className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                    title="Delete"
+                    className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -320,7 +323,7 @@ export default function MyPropertiesPage() {
                   <th className="px-6 py-4 font-medium">Type</th>
                   <th className="px-6 py-4 font-medium">Status</th>
                   <th className="px-6 py-4 font-medium">Price</th>
-                  <th className="px-6 py-4 font-medium">Views</th>
+                  <th className="px-6 py-4 font-medium">Area</th>
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -336,8 +339,9 @@ export default function MyPropertiesPage() {
                         />
                         <div>
                           <p className="font-bold text-gray-900">{property.title}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {property.location}{property.city ? `, ${property.city}` : ''}
+                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            {property.address}
                           </p>
                         </div>
                       </div>
@@ -356,7 +360,7 @@ export default function MyPropertiesPage() {
                       <p className="font-bold text-red-600">{property.price}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-gray-600">{property.views}</span>
+                      <span className="text-gray-600">{property.area}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -367,7 +371,7 @@ export default function MyPropertiesPage() {
                           <Eye className="w-4 h-4" />
                         </Link>
                         <Link
-                          href={`/owner/properties/${property.id}/edit`}
+                          href={`/my/properties/${property.id}/edit`}
                           className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                         >
                           <Edit className="w-4 h-4" />
@@ -395,7 +399,7 @@ export default function MyPropertiesPage() {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No properties found</h3>
           <p className="text-gray-500 text-sm mb-4">Try adjusting your search or add a new property</p>
           <Link
-            href="/owner/properties/new"
+            href="/my/properties/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
           >
             <Plus className="w-4 h-4" />

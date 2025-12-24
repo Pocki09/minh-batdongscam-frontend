@@ -52,11 +52,11 @@ export default function LandingPage() {
     fetchFeatured();
   }, []);
 
-  const formatPrice = (amount: number, transactionType: 'SALE' | 'RENT' | null) => {
-    if (transactionType === 'RENT') {
-      return `$${amount.toLocaleString()}/month`;
+  const formatPrice = (amount: number, transactionType: 'SALE' | 'RENTAL' | null) => {
+    if (transactionType === 'RENTAL') {
+      return `${amount.toLocaleString('vi-VN')} VND/tháng`;
     }
-    return `$${amount.toLocaleString()}`;
+    return `${amount.toLocaleString('vi-VN')} VND`;
   };
 
   // Helper to convert image URLs - only accept absolute URLs
@@ -89,7 +89,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="pt-24 pb-16 bg-gradient-to-br from-red-50 via-white to-orange-50">
-        <div className="max-w-[85%] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
@@ -174,7 +174,7 @@ export default function LandingPage() {
 
       {/* Featured Properties */}
       <section className="py-16 bg-gray-50">
-        <div className="max-w-[85%] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-900">Featured Properties</h2>
@@ -258,7 +258,7 @@ export default function LandingPage() {
 
       {/* Popular Locations */}
       <section className="py-16">
-        <div className="max-w-[85%] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">Popular Locations</h2>
             <p className="text-gray-600 mt-2">Explore properties in the most sought-after areas</p>
@@ -289,7 +289,7 @@ export default function LandingPage() {
 
       {/* Why Choose Us */}
       <section className="py-16 bg-gray-50">
-        <div className="max-w-[85%] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900">Why Choose BatDongScam?</h2>
             <p className="text-gray-600 mt-2">We make finding your perfect property easy and safe</p>
@@ -330,7 +330,7 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section className="py-16 bg-red-600">
-        <div className="max-w-[85%] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="max-w-[90%] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white">Ready to Find Your Dream Home?</h2>
           <p className="text-red-100 mt-4 max-w-2xl mx-auto">
             Join thousands of happy customers who found their perfect property through BatDongScam
